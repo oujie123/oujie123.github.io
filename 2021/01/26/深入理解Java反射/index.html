@@ -1,0 +1,274 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>深入理解Java反射 | 美丽的风景往往隐藏在道路的尽头</title><meta name="keywords" content="反射,java"><meta name="author" content="Jack Ou"><meta name="copyright" content="Jack Ou"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="本文从Java反射的定义讲起，然后通过图解生动形象讲解反射的作用，最后一一说明反射的api。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="深入理解Java反射">
+<meta property="og:url" content="https://oujie123.github.io/2021/01/26/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Java%E5%8F%8D%E5%B0%84/index.html">
+<meta property="og:site_name" content="美丽的风景往往隐藏在道路的尽头">
+<meta property="og:description" content="本文从Java反射的定义讲起，然后通过图解生动形象讲解反射的作用，最后一一说明反射的api。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://i1.fuimg.com/732669/a7883d97d46c5112.jpg">
+<meta property="article:published_time" content="2021-01-26T08:26:22.000Z">
+<meta property="article:modified_time" content="2021-01-26T08:41:05.950Z">
+<meta property="article:author" content="Jack Ou">
+<meta property="article:tag" content="反射">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://i1.fuimg.com/732669/a7883d97d46c5112.jpg"><link rel="shortcut icon" href="/img/sheep.png"><link rel="canonical" href="https://oujie123.github.io/2021/01/26/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Java%E5%8F%8D%E5%B0%84/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="preconnect" href="//zz.bdstatic.com"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":50,"languages":{"author":"作者: Jack Ou","link":"链接: ","source":"来源: 美丽的风景往往隐藏在道路的尽头","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: true,
+  islazyload: false,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}
+
+// https://stackoverflow.com/questions/16839698/jquery-getscript-alternative-in-native-javascript
+const getScript = url => new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.async = true
+  script.onerror = reject
+  script.onload = script.onreadystatechange = function() {
+    const loadState = this.readyState
+    if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+    script.onload = script.onreadystatechange = null
+    resolve()
+  }
+  document.head.appendChild(script)
+})</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2021-01-26 16:41:05'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><meta name="generator" content="Hexo 5.3.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="/img/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(http://i1.fuimg.com/732669/a7883d97d46c5112.jpg)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">美丽的风景往往隐藏在道路的尽头</a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">深入理解Java反射</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-01-26T08:26:22.000Z" title="发表于 2021-01-26 16:26:22">2021-01-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-01-26T08:41:05.950Z" title="更新于 2021-01-26 16:41:05">2021-01-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Java/">Java</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">1.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>3分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h3 id="反射"><a href="#反射" class="headerlink" title="反射"></a>反射</h3><h4 id="1-什么是反射？"><a href="#1-什么是反射？" class="headerlink" title="1. 什么是反射？"></a>1. 什么是反射？</h4><p>​    主要是指程序可以访问、检测和修改它本身状态或行为的一种能力</p>
+<h4 id="2-Java反射提供了什么能力？"><a href="#2-Java反射提供了什么能力？" class="headerlink" title="2. Java反射提供了什么能力？"></a>2. Java反射提供了什么能力？</h4><p>​    在Java运行时环境中，对于任意一个类，都知道这个类有哪些属性和方法，对于任意一个对象都能调用它的任意一个方法。具体的能力如下：</p>
+<ul>
+<li>1.在运行时判断任意一个对象所属的类。</li>
+<li>2.在运行时构造任意一个类的对象。</li>
+<li>3.在运行时判断任意一个类所具有的成员变量和方法。</li>
+<li>4.在运行时调用任意一个对象的方法。 </li>
+</ul>
+<h4 id="3-反射的作用是什么？"><a href="#3-反射的作用是什么？" class="headerlink" title="3.反射的作用是什么？"></a>3.反射的作用是什么？</h4><p>​    反射可以在程序运行的时候，动态修改程序的某些属性，使得程序按照我们设计的流程运行。大量开源框架都会用到反射机制，例如：</p>
+<ul>
+<li>腾讯的Tinker热修复框架会反射DexPathList类拿到dexElements变量，将补丁dex文件放入到dexElements数组的第一个，让ClassLoader首先加载已修复的类。</li>
+<li>360的DroidPlugin等插件化框架会反射AMS偷梁换柱intent，来绕过AMS对待启动的Activity是否注册Mainifest的验证。</li>
+<li>ARouter、ButterKnife、Retrofit、Dagger2等等开源框架都会通过反射拿到用户使用注解的类，然后完成参数注入或者获取。</li>
+</ul>
+<p><strong>下面用一张图来解释一下反射来实现Hook的原理：</strong></p>
+<p>​    横轴是程序正常运行的时间轴，我们通过反射机制在编译期或者运行时拿到程序中的某个类，动态修改该类中的一些属性，使程序按照我们期望的点运行。该机制主要还是用于我们无法修改到别人的代码，又要借助别人的代码实现自己期望的逻辑的场景。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-84550dadd657939a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="反射图解.png"></p>
+<h4 id="4-反射有什么缺点？"><a href="#4-反射有什么缺点？" class="headerlink" title="4. 反射有什么缺点？"></a>4. 反射有什么缺点？</h4><p>​    大量运用反射会导致程序变慢，但是经过测试，一般使用反射的数量级在1000以下，几乎可以忽略影响。那么为什么反射会导致程序性能变差呢：</p>
+<ul>
+<li>在使用反射的过程中会产生大量的临时对象</li>
+<li>虚拟机在检查对象可见性的时候是会消耗CPU资源</li>
+<li>反射会生成没有优化的字节码</li>
+<li>进行拆箱、装箱、类型转换的时候会消耗资源</li>
+</ul>
+<h4 id="5-如何使用反射？"><a href="#5-如何使用反射？" class="headerlink" title="5. 如何使用反射？"></a>5. 如何使用反射？</h4><p>​    在JDK中主要有以下类来实现反射机制，这些（除了第一个）都位于rt.jar的java.lang.reflect包中</p>
+<ul>
+<li>Class类：代表一个类，位于java.lang包下。</li>
+<li>Field类：代表类的成员变量（成员变量也称为类的属性）。</li>
+<li>Method类：代表类的方法。</li>
+<li>Constructor类：代表类的构造方法。</li>
+<li>Array类：提供了动态创建数组，以及访问数组的元素的静态方法。</li>
+</ul>
+<p>详细API我先用一张图展示出来，然后一个一个阐述用法。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-a7fa332bd1fc472e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="反射.png"></p>
+<h5 id="5-1-Class类的6种获取方式"><a href="#5-1-Class类的6种获取方式" class="headerlink" title="5.1 Class类的6种获取方式"></a>5.1 Class类的6种获取方式</h5><ul>
+<li><p>类名.class。  例如: MainActivity.class;</p>
+</li>
+<li><p>对象.getClass()。  例如: View view; view.getClass();</p>
+</li>
+<li><p>Class.forName(“全限定名”)。  例如: Class.forName(“java.lang.String”);</p>
+</li>
+<li><p>类.class.getClassLoader().loadClass(“全限定名”)。 </p>
+<p>例如: MainActivity.class.getClassLoader().loadClass(“java.lang.String”);</p>
+</li>
+<li><p>子类.class.getSuperClass()。  例如: MainActivity.class.getSuperclass();</p>
+</li>
+<li><p>包装类.class。  例如: Integer.class、ContextThemeWrapper.class</p>
+</li>
+</ul>
+<h5 id="5-2-根据类获取类名、全限定名和包名"><a href="#5-2-根据类获取类名、全限定名和包名" class="headerlink" title="5.2 根据类获取类名、全限定名和包名"></a>5.2 根据类获取类名、全限定名和包名</h5><ul>
+<li>getName() 获取全限定名。  例如: MainActivity.class.getName()</li>
+<li>getSimpleName() 获得类名。例如: MainActivity.class.getSimpleName()</li>
+<li>getPackage().getName()包名。 例如: MainActivity.class.getPackage().getName()</li>
+</ul>
+<h5 id="5-3-获取变量、属性"><a href="#5-3-获取变量、属性" class="headerlink" title="5.3 获取变量、属性"></a>5.3 获取变量、属性</h5><ul>
+<li>getField(“属性名”) 获取public公共属性，包括可以获取父类的</li>
+<li>getName() 属性名</li>
+<li>getModifiers() 修饰符</li>
+<li>getType() 数据类型</li>
+<li>set(对象名，属性值)  给属性赋值。相当于 对象名.set属性名   </li>
+<li>get(对象名) 获取属性。相当于 对象名.get属性名  </li>
+<li>getDeclearedField(“属性名”)  获取指定属性</li>
+<li>setAccessible(true) 放开private属性访问权</li>
+<li>getDeclearedFields()  获取类的全部属性</li>
+</ul>
+<h5 id="5-4-获取类中的方法"><a href="#5-4-获取类中的方法" class="headerlink" title="5.4 获取类中的方法"></a>5.4 获取类中的方法</h5><ul>
+<li>getMethod(方法名，参数数据类型(没有参数传null))  获取public方法</li>
+<li>getDeclearedMethod(方法名，参数数据类型(没有参数传null))  获取类中所有方法</li>
+<li>invoke(对象名，参数列表) 执行方法。相当于  对象名.方法名    如果是静态方法对象名传入<strong>null</strong></li>
+<li>getParameterTypes() 得到返回参数列表</li>
+<li>getDeclearedMethods() 得到类的所有的方法</li>
+<li>getReturnType() 获取返回值的数据类型</li>
+</ul>
+<h5 id="5-5-获取和调用构造方法"><a href="#5-5-获取和调用构造方法" class="headerlink" title="5.5 获取和调用构造方法"></a>5.5 获取和调用构造方法</h5><ul>
+<li>Class对象.getConstructor() 得到构造方法</li>
+<li>Class对象.getConstructors() 得到所有构造方法</li>
+<li>Class对象.getDeclaredConstructor 获取Class类中的构造方法</li>
+<li>newInstance(参数) 调用构造方法</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/a46ec6f5ea5f">Jack Ou</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/a46ec6f5ea5f">https://www.jianshu.com/p/a46ec6f5ea5f</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">此文章版权归Jack Ou所有，如有转载，请註明来自原作者</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%8F%8D%E5%B0%84/">反射</a></div><div class="post_share"><div class="social-share" data-image="http://i1.fuimg.com/732669/a7883d97d46c5112.jpg" data-sites="wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏<div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="/img/wechat.jpg" target="_blank"><img class="post-qr-code-img" src="/img/wechat.jpg" alt="微信"/></a><div class="post-qr-code-desc">微信</div></li><li class="reward-item"><a href="/img/alipay.jpg" target="_blank"><img class="post-qr-code-img" src="/img/alipay.jpg" alt="支付宝"/></a><div class="post-qr-code-desc">支付宝</div></li></ul></div></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2021/01/26/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%B9%B6%E5%8F%91%E6%80%BB%E7%BB%93%E5%BD%95(%E4%B8%80)%20--%20%E7%BA%BF%E7%A8%8B%E8%BF%9B%E7%A8%8B%E5%9F%BA%E7%A1%80/"><img class="prev-cover" src="http://i1.fuimg.com/732669/942731a2ad502d4c.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">多线程并发总结录(一) -- 线程进程基础</div></div></a></div><div class="next-post pull-right"><a href="/2021/01/26/%E5%AF%B9%E6%B3%9B%E5%9E%8B%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%9A%84%E8%AE%A4%E8%AF%86/"><img class="next-cover" src="http://i1.fuimg.com/732669/17f67b1b5cca1707.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">对泛型深入浅出的认识</div></div></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-info-avatar is-center"><img class="avatar-img" src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">Jack Ou</div><div class="author-info__description">All things are difficult before they are easy</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200"><i class="fad fa-sheep"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/oujie123" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://www.jianshu.com/u/10058d760200" target="_blank" title="简书"><i class="fas fa-book-open"></i></a><a class="social-icon" href="https://blog.csdn.net/u010248147" target="_blank" title="CSDN"><i class="fab fa-microblog"></i></a><a class="social-icon" href="mailto:815669856@qq.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎收看我的博客，很高兴与您一同成长！</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%8D%E5%B0%84"><span class="toc-number">1.</span> <span class="toc-text">反射</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E4%BB%80%E4%B9%88%E6%98%AF%E5%8F%8D%E5%B0%84%EF%BC%9F"><span class="toc-number">1.1.</span> <span class="toc-text">1. 什么是反射？</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-Java%E5%8F%8D%E5%B0%84%E6%8F%90%E4%BE%9B%E4%BA%86%E4%BB%80%E4%B9%88%E8%83%BD%E5%8A%9B%EF%BC%9F"><span class="toc-number">1.2.</span> <span class="toc-text">2. Java反射提供了什么能力？</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E5%8F%8D%E5%B0%84%E7%9A%84%E4%BD%9C%E7%94%A8%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">1.3.</span> <span class="toc-text">3.反射的作用是什么？</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-%E5%8F%8D%E5%B0%84%E6%9C%89%E4%BB%80%E4%B9%88%E7%BC%BA%E7%82%B9%EF%BC%9F"><span class="toc-number">1.4.</span> <span class="toc-text">4. 反射有什么缺点？</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5-%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8%E5%8F%8D%E5%B0%84%EF%BC%9F"><span class="toc-number">1.5.</span> <span class="toc-text">5. 如何使用反射？</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#5-1-Class%E7%B1%BB%E7%9A%846%E7%A7%8D%E8%8E%B7%E5%8F%96%E6%96%B9%E5%BC%8F"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 Class类的6种获取方式</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#5-2-%E6%A0%B9%E6%8D%AE%E7%B1%BB%E8%8E%B7%E5%8F%96%E7%B1%BB%E5%90%8D%E3%80%81%E5%85%A8%E9%99%90%E5%AE%9A%E5%90%8D%E5%92%8C%E5%8C%85%E5%90%8D"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 根据类获取类名、全限定名和包名</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#5-3-%E8%8E%B7%E5%8F%96%E5%8F%98%E9%87%8F%E3%80%81%E5%B1%9E%E6%80%A7"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 获取变量、属性</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#5-4-%E8%8E%B7%E5%8F%96%E7%B1%BB%E4%B8%AD%E7%9A%84%E6%96%B9%E6%B3%95"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 获取类中的方法</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#5-5-%E8%8E%B7%E5%8F%96%E5%92%8C%E8%B0%83%E7%94%A8%E6%9E%84%E9%80%A0%E6%96%B9%E6%B3%95"><span class="toc-number">1.5.5.</span> <span class="toc-text">5.5 获取和调用构造方法</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2021/01/26/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%B9%B6%E5%8F%91%E6%80%BB%E7%BB%93%E5%BD%95(%E4%BA%8C)%20--%20%E7%BA%BF%E7%A8%8B%E9%97%B4%E5%85%B1%E4%BA%AB/" title="多线程并发总结录(二)--线程间共享"><img src="http://i2.tiimg.com/732669/49a9f74304caca9c.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="多线程并发总结录(二)--线程间共享"/></a><div class="content"><a class="title" href="/2021/01/26/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%B9%B6%E5%8F%91%E6%80%BB%E7%BB%93%E5%BD%95(%E4%BA%8C)%20--%20%E7%BA%BF%E7%A8%8B%E9%97%B4%E5%85%B1%E4%BA%AB/" title="多线程并发总结录(二)--线程间共享">多线程并发总结录(二)--线程间共享</a><time datetime="2021-01-26T10:47:52.000Z" title="发表于 2021-01-26 18:47:52">2021-01-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/01/26/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%B9%B6%E5%8F%91%E6%80%BB%E7%BB%93%E5%BD%95(%E4%B8%80)%20--%20%E7%BA%BF%E7%A8%8B%E8%BF%9B%E7%A8%8B%E5%9F%BA%E7%A1%80/" title="多线程并发总结录(一) -- 线程进程基础"><img src="http://i1.fuimg.com/732669/942731a2ad502d4c.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="多线程并发总结录(一) -- 线程进程基础"/></a><div class="content"><a class="title" href="/2021/01/26/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E5%B9%B6%E5%8F%91%E6%80%BB%E7%BB%93%E5%BD%95(%E4%B8%80)%20--%20%E7%BA%BF%E7%A8%8B%E8%BF%9B%E7%A8%8B%E5%9F%BA%E7%A1%80/" title="多线程并发总结录(一) -- 线程进程基础">多线程并发总结录(一) -- 线程进程基础</a><time datetime="2021-01-26T08:47:11.000Z" title="发表于 2021-01-26 16:47:11">2021-01-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/01/26/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Java%E5%8F%8D%E5%B0%84/" title="深入理解Java反射"><img src="http://i1.fuimg.com/732669/a7883d97d46c5112.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="深入理解Java反射"/></a><div class="content"><a class="title" href="/2021/01/26/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Java%E5%8F%8D%E5%B0%84/" title="深入理解Java反射">深入理解Java反射</a><time datetime="2021-01-26T08:26:22.000Z" title="发表于 2021-01-26 16:26:22">2021-01-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/01/26/%E5%AF%B9%E6%B3%9B%E5%9E%8B%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%9A%84%E8%AE%A4%E8%AF%86/" title="对泛型深入浅出的认识"><img src="http://i1.fuimg.com/732669/17f67b1b5cca1707.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="对泛型深入浅出的认识"/></a><div class="content"><a class="title" href="/2021/01/26/%E5%AF%B9%E6%B3%9B%E5%9E%8B%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%9A%84%E8%AE%A4%E8%AF%86/" title="对泛型深入浅出的认识">对泛型深入浅出的认识</a><time datetime="2021-01-26T07:48:32.000Z" title="发表于 2021-01-26 15:48:32">2021-01-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/01/25/%E9%9D%99%E6%80%81%E4%BB%A3%E7%90%86%E5%92%8C%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" title="Java代理详解"><img src="http://i1.fuimg.com/732669/a7883d97d46c5112.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Java代理详解"/></a><div class="content"><a class="title" href="/2021/01/25/%E9%9D%99%E6%80%81%E4%BB%A3%E7%90%86%E5%92%8C%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/" title="Java代理详解">Java代理详解</a><time datetime="2021-01-25T07:28:19.241Z" title="发表于 2021-01-25 15:28:19">2021-01-25</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(http://i1.fuimg.com/732669/a7883d97d46c5112.jpg)"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By Jack Ou</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi, welcome to my <a href="https://oujie123.github.io/">blog</a>!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script>var preloader = {
+  endLoading: () => {
+    document.body.style.overflow = 'auto';
+    document.getElementById('loading-box').classList.add("loaded")
+  },
+  initLoading: () => {
+    document.body.style.overflow = '';
+    document.getElementById('loading-box').classList.remove("loaded")
+
+  }
+}
+window.addEventListener('load',()=> {preloader.endLoading()})</script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="true" data-click="true"></script><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-fluttering-ribbon.min.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="99" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-nest.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/activate-power-mode.min.js"></script><script>POWERMODE.colorful = true;
+POWERMODE.shake = true;
+POWERMODE.mobile = true;
+document.body.addEventListener('input', POWERMODE);
+</script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-heart.min.js" async="async" mobile="true"></script><script id="click-show-text" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-show-text.min.js" data-mobile="true" data-text="I,LOVE,YOU" data-fontsize="15px" data-random="false" async="async"></script><script>(function(){
+  const bp = document.createElement('script');
+  const curProtocol = window.location.protocol.split(':')[0];
+  if (curProtocol === 'https') {
+    bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+  }
+  else{
+    bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+  }
+  bp.dataset.pjax = ''
+  const s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(bp, s);
+})()</script></div></body></html>
