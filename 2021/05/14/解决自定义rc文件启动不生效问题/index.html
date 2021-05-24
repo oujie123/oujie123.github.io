@@ -1,0 +1,254 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>解决自定义rc文件启动不生效问题 | 美丽的风景往往隐藏在道路的尽头</title><meta name="keywords" content="NDK,Android"><meta name="author" content="Jack Ou"><meta name="copyright" content="Jack Ou"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="referrer" content="no-referrer"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="本文主要描述解决自定义rc文件启动不生效问题。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="解决自定义rc文件启动不生效问题">
+<meta property="og:url" content="https://oujie123.github.io/2021/05/14/%E8%A7%A3%E5%86%B3%E8%87%AA%E5%AE%9A%E4%B9%89rc%E6%96%87%E4%BB%B6%E5%90%AF%E5%8A%A8%E4%B8%8D%E7%94%9F%E6%95%88%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="美丽的风景往往隐藏在道路的尽头">
+<meta property="og:description" content="本文主要描述解决自定义rc文件启动不生效问题。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/13838098-39bd8a532d6e3d8f.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="article:published_time" content="2021-05-14T03:01:11.000Z">
+<meta property="article:modified_time" content="2021-05-24T15:46:06.551Z">
+<meta property="article:author" content="Jack Ou">
+<meta property="article:tag" content="问题集">
+<meta property="article:tag" content="NDK">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/13838098-39bd8a532d6e3d8f.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="shortcut icon" href="https://upload-images.jianshu.io/upload_images/13838098-8a5cd66eafd7c761.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="canonical" href="https://oujie123.github.io/2021/05/14/%E8%A7%A3%E5%86%B3%E8%87%AA%E5%AE%9A%E4%B9%89rc%E6%96%87%E4%BB%B6%E5%90%AF%E5%8A%A8%E4%B8%8D%E7%94%9F%E6%95%88%E9%97%AE%E9%A2%98/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":50,"languages":{"author":"作者: Jack Ou","link":"链接: ","source":"来源: 美丽的风景往往隐藏在道路的尽头","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: true,
+  islazyload: false,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}
+
+// https://stackoverflow.com/questions/16839698/jquery-getscript-alternative-in-native-javascript
+const getScript = url => new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.async = true
+  script.onerror = reject
+  script.onload = script.onreadystatechange = function() {
+    const loadState = this.readyState
+    if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+    script.onload = script.onreadystatechange = null
+    resolve()
+  }
+  document.head.appendChild(script)
+})</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2021-05-24 23:46:06'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><meta name="generator" content="Hexo 5.3.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">56</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">49</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">6</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-39bd8a532d6e3d8f.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">美丽的风景往往隐藏在道路的尽头</a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">解决自定义rc文件启动不生效问题</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-05-14T03:01:11.000Z" title="发表于 2021-05-14 11:01:11">2021-05-14</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-05-24T15:46:06.551Z" title="更新于 2021-05-24 23:46:06">2021-05-24</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Android/">Android</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">816</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>3分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h3 id="1-自定义rc文件"><a href="#1-自定义rc文件" class="headerlink" title="1.自定义rc文件"></a>1.自定义rc文件</h3><p>自定义一个标签，找一个可以执行的rc文件赋值进去。我是保存在/device/<vendor>/<product>/init.target.rc中。</product></vendor></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">service firewalldaemon /vendor/bin/firewalldaemon</span><br><span class="line">    class main</span><br><span class="line">    user system</span><br><span class="line">    group system inet net_admin</span><br><span class="line">    disabled</span><br><span class="line">    capabilities NET_ADMIN NET_RAW</span><br><span class="line">    socket firewall stream 0660 root system</span><br><span class="line"></span><br><span class="line">on zygote-start</span><br><span class="line">    start firewalldaemon</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Android.mk文件</span></span><br><span class="line">LOCAL_PATH:= $(call my-dir)</span><br><span class="line"></span><br><span class="line">include $(CLEAR_VARS)</span><br><span class="line"></span><br><span class="line">#LOCAL_PROPRIETARY_MODULE := true</span><br><span class="line">LOCAL_VENDOR_MODULE := <span class="keyword">true</span></span><br><span class="line">LOCAL_MODULE := firewalldaemon</span><br><span class="line">LOCAL_INIT_RC := firewalldaemon.rc</span><br><span class="line"></span><br><span class="line">LOCAL_MODULE_TAGS := optional</span><br><span class="line"></span><br><span class="line">LOCAL_CPPFLAGS := -Wall \</span><br><span class="line">                  -Werror \</span><br><span class="line">                  -Wno-unused-parameter \</span><br><span class="line">                  -DLOG_TAG=\<span class="string">&quot;FirewallDaemon\&quot;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">LOCAL_SRC_FILES := src/ServerSocket.cpp \</span></span><br><span class="line"><span class="string">                   src/Socket.cpp \</span></span><br><span class="line"><span class="string">                   src/main.cpp</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">LOCAL_C_INCLUDES := src/</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">LOCAL_SHARED_LIBRARIES := \</span></span><br><span class="line"><span class="string">    liblogwrap \</span></span><br><span class="line"><span class="string">    libcutils \</span></span><br><span class="line"><span class="string">    libutils \</span></span><br><span class="line"><span class="string">    liblog</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">include $(GEN_PREBUILT_PACKAGE)</span></span><br><span class="line"><span class="string">include $(BUILD_EXECUTABLE)</span></span><br></pre></td></tr></table></figure>
+
+
+<p>编译出来一个firewalldaemon可执行文件。</p>
+<p>将firewalldaemon PUSH到/vendor/bin目录下。</p>
+<p>然后修改/vendor/etc/init/hw/init.qcom.rc，将上面rc标签复制到这个文件末尾，重启车机会发现我们标签声明的文件根本没有执行。</p>
+<h4 id="2-调查问题"><a href="#2-调查问题" class="headerlink" title="2.调查问题"></a>2.调查问题</h4><h4 id="2-1-Selinux权限问题"><a href="#2-1-Selinux权限问题" class="headerlink" title="2.1 Selinux权限问题"></a>2.1 Selinux权限问题</h4><p>猜测是不是selinux没有给权限</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">msmnile_gvmq:/ # getenforce</span><br><span class="line">Permissive</span><br></pre></td></tr></table></figure>
+<p>发现是在兼容模式，讲道理应该只是有日志输出来，不会拦截呀。排除这个可能。</p>
+<h4 id="2-2-ramdisk介绍与定制"><a href="#2-2-ramdisk介绍与定制" class="headerlink" title="2.2 ramdisk介绍与定制"></a>2.2 ramdisk介绍与定制</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-4718e1679166d3f3.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="randisk介绍.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-61adaba8d46c0cb4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="内存磁盘镜像.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-ad6b9bb1e9b405e6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="烧写镜像.png"></p>
+<p>最后发现车机高通的系统修改了RC文件，重启之后RC文件并没有被替换成boot.img中的文件。说明修改是生效了的。但是服务还是无法启动。</p>
+<h4 id="2-3启动指令启动服务"><a href="#2-3启动指令启动服务" class="headerlink" title="2.3启动指令启动服务"></a>2.3启动指令启动服务</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">msmnile_gvmq:/ # setprop ctl.start firewalldaemon</span><br><span class="line">setprop ctl.start firewalldaemon</span><br></pre></td></tr></table></figure>
+<p>我写的firewalldaemon是一个while(1)不会退出程序，结果通过指令也无法启动，查看dmesg信息，报如下问题。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">msmnile_gvmq:/ # dmesg|grep -ie firewall</span><br><span class="line">dmesg|grep -ie firewall</span><br><span class="line">[ 6592.467286] init: Received control message &#x27;start&#x27; for &#x27;firewalldaemon&#x27; from pid: 29798 (setprop ctl.start firewalldaemon)</span><br><span class="line">[ 6592.467412] init: Could not ctl.start for service firewalldaemon: File /vendor/bin/firewalldaemon(labeled &quot;u:object_r:vendor_file:s0&quot;) has incorrect label or no domain transition from u:r:init:s0 to another SELinux domain defined. Have you configured your service correctly? https://source.android.com/security/selinux/device-policy#label_new_services_and_address_denials</span><br></pre></td></tr></table></figure>
+<p>此消息说明即使Selinux是Permissive模式也不行，因为进程还没有起来，进程起来之后才可以通过Permissive模式配置规则。</p>
+<p>于是开始配置规则。 </p>
+<ul>
+<li>step 1:  为<code>/vendor/bin/firewalldaemon</code> 添加标签</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">//在device/qcom/sepolicy/vendor/common/file_contexts 添加</span><br><span class="line"></span><br><span class="line">/vendor/bin/firewalldaemon                      u:object_r:firewalldaemon_exec:s0</span><br></pre></td></tr></table></figure>
+<ul>
+<li>step 2: 创建一个新网域“firewalldaemon”</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">// 创建device/qcom/sepolicy/vendor/common/firewalldaemon.te</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> firewalldaemon service</span></span><br><span class="line">type firewalldaemon, domain;</span><br><span class="line">type firewalldaemon_exec, vendor_file_type, exec_type, file_type;</span><br><span class="line"></span><br><span class="line">init_daemon_domain(firewalldaemon)</span><br></pre></td></tr></table></figure>
+<ul>
+<li>step 3: 在init.target.rc中添加需要启动的服务</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;device&#x2F;qcom&#x2F;msmnile_gvmq&#x2F;init.target.rc</span><br><span class="line"></span><br><span class="line">service firewalldaemon &#x2F;vendor&#x2F;bin&#x2F;firewalldaemon</span><br><span class="line">    class main</span><br><span class="line">    user system</span><br><span class="line">    group system inet net_admin</span><br><span class="line">    disabled</span><br><span class="line">    capabilities NET_ADMIN NET_RAW</span><br><span class="line">    socket tsfirewall stream 0660 root system</span><br></pre></td></tr></table></figure>
+<ul>
+<li>重新编译系统并且烧写img</li>
+</ul>
+<h4 id="2-4-编译问题"><a href="#2-4-编译问题" class="headerlink" title="2.4 编译问题"></a>2.4 编译问题</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 编译日志输出：</span><br><span class="line">make -j4 2&gt;&amp;1 | tee android_build_log.txt</span><br></pre></td></tr></table></figure>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-4db44212aa601751.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="编译报错.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-4cb7fd1c1b88af12.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="报错原因.png"></p>
+<p>报错信息：执行文件需要vendor file域，需要在firewalldaemon.te中添加vendor_file_type</p>
+<h4 id="2-5-生成vendor-img"><a href="#2-5-生成vendor-img" class="headerlink" title="2.5 生成vendor.img"></a>2.5 生成vendor.img</h4><p>使用fastboot烧写img</p>
+<p>进入fastboot模式按住“Q”开机启动，但是串口无法输入。查看USB驱动是否有，查看串口工具配置，记得关闭“流控”。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-4355be37af916991.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="串口配置.png"></p>
+<p>连接成功，进入到fastboot模式</p>
+<p>使用电脑CMD查看连接设备</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">// 查看设备</span><br><span class="line">fastboot devices -l</span><br><span class="line"></span><br><span class="line">// 烧写img</span><br><span class="line">fastboot flash la_vendor_a C:\Users\81566\Desktop\vendor.img</span><br><span class="line"></span><br><span class="line">// 可刷写的img</span><br><span class="line">fastboot flash la_system_a system.img</span><br><span class="line">fastboot flash la_vendor_a vendor.img</span><br><span class="line">fastboot flash la_userdata userdata.img</span><br><span class="line">fastboot flash la_persist persist.img</span><br><span class="line">fastboot flash vbmeta_a vbmeta.img</span><br><span class="line">fastboot flash dtbo_a dtbo.img</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">// 重启车机</span><br><span class="line">fastboot reboot</span><br></pre></td></tr></table></figure>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-5458deb41b1a40c0.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="烧写成功.png"></p>
+<h4 id="2-6-重启车机见证奇迹的时刻"><a href="#2-6-重启车机见证奇迹的时刻" class="headerlink" title="2.6 重启车机见证奇迹的时刻"></a>2.6 重启车机见证奇迹的时刻</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-403ac01278d9064a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="firewall服务自启动.png"></p>
+<h4 id="3-编译报缺少classes-head-jar"><a href="#3-编译报缺少classes-head-jar" class="headerlink" title="3.编译报缺少classes-head.jar"></a>3.编译报缺少classes-head.jar</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-0fe54998d6f715c6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="编译缺少classes-header.png"></p>
+<p>解决办法：将工程移入到/vendor/ts/proprietary</p>
+<p>然后正常编译即可</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200">Jack Ou</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200">https://www.jianshu.com/u/10058d760200</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">此文章版权归Jack Ou所有，如有转载，请註明来自原作者</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E9%97%AE%E9%A2%98%E9%9B%86/">问题集</a><a class="post-meta__tags" href="/tags/NDK/">NDK</a></div><div class="post_share"><div class="social-share" data-image="https://upload-images.jianshu.io/upload_images/13838098-39bd8a532d6e3d8f.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" data-sites="wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏<div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="微信"/></a><div class="post-qr-code-desc">微信</div></li><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="支付宝"/></a><div class="post-qr-code-desc">支付宝</div></li></ul></div></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2021/05/19/1-C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1/"><img class="prev-cover" src="https://upload-images.jianshu.io/upload_images/13838098-dc6d7cc65659c816.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">(1)C++面向对象</div></div></a></div><div class="next-post pull-right"><a href="/2021/05/14/Glide%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/"><img class="next-cover" src="https://upload-images.jianshu.io/upload_images/13838098-dc6d7cc65659c816.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Glide内存管理</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2021/04/02/解决ndk工具编译so库问题/" title="解决ndk工具编译so库问题"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-a01edf9b521303e5.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-04-02</div><div class="title">解决ndk工具编译so库问题</div></div></a></div><div><a href="/2021/03/05/源码编译引入第三方库/" title="源码编译引入第三方库"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-445230107eb2910f.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-03-05</div><div class="title">源码编译引入第三方库</div></div></a></div><div><a href="/2021/03/08/调用Android原生-SystemApi和-Hide方法/" title="调用Android原生@SystemApi、@Hide方法和解决混淆问题"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-dc6d7cc65659c816.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-03-08</div><div class="title">调用Android原生@SystemApi、@Hide方法和解决混淆问题</div></div></a></div><div><a href="/2021/03/23/解决hexo引入图床，手机和web不显示图片的问题/" title="解决hexo引入图床，手机和web不显示图片的问题"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-ba64bfeaf1538afe.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-03-23</div><div class="title">解决hexo引入图床，手机和web不显示图片的问题</div></div></a></div><div><a href="/2021/04/01/调查车机无法上网/" title="调查车机无法上网"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-1cd12a1be7c1f1a4.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-04-01</div><div class="title">调查车机无法上网</div></div></a></div><div><a href="/2021/04/28/解决编译系统时报-ckati-failed-with-signal-killed/" title="解决编译系统时报:ckati failed with: signal: killed"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-01ccb54bb5952f05.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-04-28</div><div class="title">解决编译系统时报:ckati failed with: signal: killed</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-info-avatar is-center"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">Jack Ou</div><div class="author-info__description">All things are difficult before they are easy</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">56</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">49</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">6</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200"><i class="fad fa-sheep"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/oujie123" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://www.jianshu.com/u/10058d760200" target="_blank" title="简书"><i class="fas fa-book-open"></i></a><a class="social-icon" href="https://blog.csdn.net/u010248147" target="_blank" title="CSDN"><i class="fab fa-microblog"></i></a><a class="social-icon" href="mailto:815669856@qq.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎收看我的博客，很高兴与您一同成长！</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%87%AA%E5%AE%9A%E4%B9%89rc%E6%96%87%E4%BB%B6"><span class="toc-number">1.</span> <span class="toc-text">1.自定义rc文件</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E8%B0%83%E6%9F%A5%E9%97%AE%E9%A2%98"><span class="toc-number">1.1.</span> <span class="toc-text">2.调查问题</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-Selinux%E6%9D%83%E9%99%90%E9%97%AE%E9%A2%98"><span class="toc-number">1.2.</span> <span class="toc-text">2.1 Selinux权限问题</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-ramdisk%E4%BB%8B%E7%BB%8D%E4%B8%8E%E5%AE%9A%E5%88%B6"><span class="toc-number">1.3.</span> <span class="toc-text">2.2 ramdisk介绍与定制</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-3%E5%90%AF%E5%8A%A8%E6%8C%87%E4%BB%A4%E5%90%AF%E5%8A%A8%E6%9C%8D%E5%8A%A1"><span class="toc-number">1.4.</span> <span class="toc-text">2.3启动指令启动服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-4-%E7%BC%96%E8%AF%91%E9%97%AE%E9%A2%98"><span class="toc-number">1.5.</span> <span class="toc-text">2.4 编译问题</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-5-%E7%94%9F%E6%88%90vendor-img"><span class="toc-number">1.6.</span> <span class="toc-text">2.5 生成vendor.img</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-6-%E9%87%8D%E5%90%AF%E8%BD%A6%E6%9C%BA%E8%A7%81%E8%AF%81%E5%A5%87%E8%BF%B9%E7%9A%84%E6%97%B6%E5%88%BB"><span class="toc-number">1.7.</span> <span class="toc-text">2.6 重启车机见证奇迹的时刻</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E7%BC%96%E8%AF%91%E6%8A%A5%E7%BC%BA%E5%B0%91classes-head-jar"><span class="toc-number">1.8.</span> <span class="toc-text">3.编译报缺少classes-head.jar</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2021/05/20/2-iptables%E8%A7%84%E5%88%99%E7%AE%A1%E7%90%86/" title="(2)iptables规则管理"><img src="https://upload-images.jianshu.io/upload_images/13838098-ce87e3085f3b0299.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="(2)iptables规则管理"/></a><div class="content"><a class="title" href="/2021/05/20/2-iptables%E8%A7%84%E5%88%99%E7%AE%A1%E7%90%86/" title="(2)iptables规则管理">(2)iptables规则管理</a><time datetime="2021-05-20T01:35:43.000Z" title="发表于 2021-05-20 09:35:43">2021-05-20</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/05/19/1-C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1/" title="(1)C++面向对象"><img src="https://upload-images.jianshu.io/upload_images/13838098-dc6d7cc65659c816.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="(1)C++面向对象"/></a><div class="content"><a class="title" href="/2021/05/19/1-C-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1/" title="(1)C++面向对象">(1)C++面向对象</a><time datetime="2021-05-19T15:45:54.000Z" title="发表于 2021-05-19 23:45:54">2021-05-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/05/14/%E8%A7%A3%E5%86%B3%E8%87%AA%E5%AE%9A%E4%B9%89rc%E6%96%87%E4%BB%B6%E5%90%AF%E5%8A%A8%E4%B8%8D%E7%94%9F%E6%95%88%E9%97%AE%E9%A2%98/" title="解决自定义rc文件启动不生效问题"><img src="https://upload-images.jianshu.io/upload_images/13838098-39bd8a532d6e3d8f.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="解决自定义rc文件启动不生效问题"/></a><div class="content"><a class="title" href="/2021/05/14/%E8%A7%A3%E5%86%B3%E8%87%AA%E5%AE%9A%E4%B9%89rc%E6%96%87%E4%BB%B6%E5%90%AF%E5%8A%A8%E4%B8%8D%E7%94%9F%E6%95%88%E9%97%AE%E9%A2%98/" title="解决自定义rc文件启动不生效问题">解决自定义rc文件启动不生效问题</a><time datetime="2021-05-14T03:01:11.000Z" title="发表于 2021-05-14 11:01:11">2021-05-14</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/05/14/Glide%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" title="Glide内存管理"><img src="https://upload-images.jianshu.io/upload_images/13838098-dc6d7cc65659c816.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Glide内存管理"/></a><div class="content"><a class="title" href="/2021/05/14/Glide%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" title="Glide内存管理">Glide内存管理</a><time datetime="2021-05-13T16:20:20.000Z" title="发表于 2021-05-14 00:20:20">2021-05-14</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/05/09/C%E5%9F%BA%E7%A1%80%E5%9B%9E%E9%A1%BE-%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%93%8D%E4%BD%9C/" title="C基础回顾--字符串操作"><img src="https://upload-images.jianshu.io/upload_images/13838098-d96f29e6cfc6c63d.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="C基础回顾--字符串操作"/></a><div class="content"><a class="title" href="/2021/05/09/C%E5%9F%BA%E7%A1%80%E5%9B%9E%E9%A1%BE-%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%93%8D%E4%BD%9C/" title="C基础回顾--字符串操作">C基础回顾--字符串操作</a><time datetime="2021-05-09T11:10:55.000Z" title="发表于 2021-05-09 19:10:55">2021-05-09</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-39bd8a532d6e3d8f.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By Jack Ou</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi, welcome to my <a href="https://oujie123.github.io/">blog</a>!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script>function panguFn () {
+  if (typeof pangu === 'object') pangu.spacingElementById('content-inner')
+  else {
+    getScript('https://cdn.jsdelivr.net/npm/pangu/dist/browser/pangu.min.js')
+      .then(() => {
+        pangu.spacingElementById('content-inner')
+      })
+  }
+}
+
+function panguInit () {
+  if (false){
+    GLOBAL_CONFIG_SITE.isPost && panguFn()
+  } else {
+    panguFn()
+  }
+}
+
+document.addEventListener('DOMContentLoaded', panguInit)</script><script>var preloader = {
+  endLoading: () => {
+    document.body.style.overflow = 'auto';
+    document.getElementById('loading-box').classList.add("loaded")
+  },
+  initLoading: () => {
+    document.body.style.overflow = '';
+    document.getElementById('loading-box').classList.remove("loaded")
+
+  }
+}
+window.addEventListener('load',()=> {preloader.endLoading()})</script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="true" data-click="true"></script><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-fluttering-ribbon.min.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="99" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-nest.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/activate-power-mode.min.js"></script><script>POWERMODE.colorful = true;
+POWERMODE.shake = true;
+POWERMODE.mobile = true;
+document.body.addEventListener('input', POWERMODE);
+</script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-heart.min.js" async="async" mobile="true"></script><script id="click-show-text" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-show-text.min.js" data-mobile="true" data-text="I,LOVE,YOU" data-fontsize="15px" data-random="false" async="async"></script></div></body></html>
