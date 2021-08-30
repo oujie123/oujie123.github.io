@@ -3049,7 +3049,7 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
   <entry>
     <title>对泛型深入浅出的认识</title>
     <url>/2021/01/26/%E5%AF%B9%E6%B3%9B%E5%9E%8B%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%9A%84%E8%AE%A4%E8%AF%86/</url>
-    <content><![CDATA[<p>​    最近终于开始总结自己理解的东西，终于有时间写写自己对一些知识的认识。文笔不好，还望各位包含。以下知识点是我看了享学课堂的资料，对其中的内容进行汇总。</p>
+    <content><![CDATA[<p>​    最近终于开始总结自己理解的东西，终于有时间写写自己对一些知识的认识。文笔不好，还望各位包含。</p>
 <blockquote>
 <p>本预先资料来源于Oracle官方文档Java™ 教程-Java Tutorials</p>
 <p>官方文档:<a href="https://docs.oracle.com/javase/tutorial/java/generics/index.html">https://docs.oracle.com/javase/tutorial/java/generics/index.html</a></p>
@@ -3662,7 +3662,7 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
 <h3 id="2-签名文件的生成"><a href="#2-签名文件的生成" class="headerlink" title="2.签名文件的生成"></a>2.签名文件的生成</h3><h4 id="2-1命令行生成方式"><a href="#2-1命令行生成方式" class="headerlink" title="2.1命令行生成方式"></a>2.1命令行生成方式</h4><ul>
 <li><p>生成秘钥对：openssl genrsa -3 -out testkey.pem 2048</p>
 </li>
-<li><p>生成pem格式的证书：openssl req -new -x509 -key testkey.pem -out testkey.x509.pem -days 10000   -subj ‘/C=US/ST=California/L=Mountain View/O=Android/OU=Android/CN=Android/emailAddress=<a href="mailto:&#x61;&#x6e;&#100;&#x72;&#111;&#x69;&#x64;&#64;&#x61;&#x6e;&#x64;&#114;&#x6f;&#105;&#x64;&#x2e;&#99;&#x6f;&#109;">&#x61;&#x6e;&#100;&#x72;&#111;&#x69;&#x64;&#64;&#x61;&#x6e;&#x64;&#114;&#x6f;&#105;&#x64;&#x2e;&#99;&#x6f;&#109;</a>‘</p>
+<li><p>生成pem格式的证书：openssl req -new -x509 -key testkey.pem -out testkey.x509.pem -days 10000   -subj ‘/C=US/ST=California/L=Mountain View/O=Android/OU=Android/CN=Android/emailAddress=<a href="mailto:&#x61;&#110;&#x64;&#114;&#x6f;&#x69;&#100;&#64;&#97;&#110;&#100;&#x72;&#x6f;&#105;&#100;&#x2e;&#99;&#111;&#x6d;">&#x61;&#110;&#x64;&#114;&#x6f;&#x69;&#100;&#64;&#97;&#110;&#100;&#x72;&#x6f;&#105;&#100;&#x2e;&#99;&#111;&#x6d;</a>‘</p>
 </li>
 <li><p>生成私钥文件：openssl pkcs8 -in testkey.pem -topk8 -outform DER -out testkey.pk8 -nocrypt</p>
 </li>
@@ -3712,6 +3712,11 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
 <li>执行指令：mm</li>
 <li>在out/host/linux-x86/framework/目录找到signapk.jar</li>
 </ul>
+<h4 id="2-4-生成DM-verity的verity-key"><a href="#2-4-生成DM-verity的verity-key" class="headerlink" title="2.4 生成DM-verity的verity key"></a>2.4 生成DM-verity的verity key</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">source build/envsetup.sh</span><br><span class="line">choosecombo</span><br><span class="line">make generate_verity_key (mmm system/extras/verity/)</span><br></pre></td></tr></table></figure>
+<p>generate_verity_key是将 *.x509.pem 转换成 verity key</p>
+<p>generate_verity_key 的代码位于：system/extra/verity/generate_verity_key.c</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">out/host/linux-x86/bin/generate_verity_key -convert mykey.x509.pem verity_key</span><br></pre></td></tr></table></figure>
+<p>拷贝mykey.pk8，mykey.x509.pem，verity_key.pub 至 <code>build/target/product/security/</code> 目录，将其重命名: verity.pk8， verity.x509.pem，verity_key ，并替换默认的开发 key。</p>
 <h3 id="3-对apk进行签名"><a href="#3-对apk进行签名" class="headerlink" title="3.对apk进行签名"></a>3.对apk进行签名</h3><h4 id="3-1-使用指令签名"><a href="#3-1-使用指令签名" class="headerlink" title="3.1 使用指令签名"></a>3.1 使用指令签名</h4><p>如果使用原生的证书，目录在**/build/target/product/security/**中可以找到platform.pk8 platform.x509.pem文件，如果有我们上面生成的也可以。</p>
 <p>将要打包的apk、证书和signapk.jar放到一个目录。</p>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">java -jar signapk.jar  platform.x509.pem platform.pk8　old.apk new.apk</span><br></pre></td></tr></table></figure>
@@ -6532,7 +6537,7 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Object <span class="title">newProxyInstance</span><span class="params">(ClassLoader loader,</span></span></span><br><span class="line"><span class="function"><span class="params">                                      Class&lt;?&gt;[] interfaces,</span></span></span><br><span class="line"><span class="function"><span class="params">                                      InvocationHandler h)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> IllegalArgumentException</span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    Objects.requireNonNull(h);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">final</span> Class&lt;?&gt;[] intfs = interfaces.clone();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从classloader中遍历接口，并且调用generateProxy()生成Class对象</span></span><br><span class="line">    Class&lt;?&gt; cl = getProxyClass0(loader, intfs);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 使用指定的InvocationHandler来调用生成class对象的构造方法</span></span><br><span class="line">    <span class="comment">// 参数constructorParams就是指定的InvocationHandler，也就是传入自定义实现InvocationHandler的类</span></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> Constructor&lt;?&gt; cons = cl.getConstructor(constructorParams);</span><br><span class="line">        <span class="keyword">final</span> InvocationHandler ih = h;</span><br><span class="line">        <span class="keyword">if</span> (!Modifier.isPublic(cl.getModifiers())) &#123;</span><br><span class="line">            cons.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> cons.newInstance(<span class="keyword">new</span> Object[]&#123;h&#125;);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (IllegalAccessException|InstantiationException e) &#123;</span><br><span class="line">        <span class="comment">//...</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p>下面我们来看一下是如何生成这个Class对象的</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> Class&lt;?&gt; getProxyClass0(ClassLoader loader,</span><br><span class="line">                                       Class&lt;?&gt;... interfaces) &#123;</span><br><span class="line">    <span class="comment">// 接口数不能超过65535，即单个dex里面的方法数不能超过65535个</span></span><br><span class="line">    <span class="keyword">if</span> (interfaces.length &gt; <span class="number">65535</span>) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">&quot;interface limit exceeded&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果指定接口的代理类已经存在与缓存中，则不用新创建，直接从缓存中取即可；</span></span><br><span class="line">    <span class="comment">//如果缓存中没有指定代理对象，则通过ProxyClassFactory来创建一个代理对象。</span></span><br><span class="line">    <span class="keyword">return</span> proxyClassCache.get(loader, interfaces);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> Class&lt;?&gt; getProxyClass0(ClassLoader loader,</span><br><span class="line">                                       Class&lt;?&gt;... interfaces) &#123;</span><br><span class="line">    <span class="comment">// 接口数不能超过65535，即单个dex里面的方法数不能超过65535个</span></span><br><span class="line">    <span class="keyword">if</span> (interfaces.length &gt; <span class="number">65535</span>) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">&quot;interface limit exceeded&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果指定接口的代理类已经存在于缓存中，则不用新创建，直接从缓存中取即可；</span></span><br><span class="line">    <span class="comment">// 如果缓存中没有指定代理对象，则通过ProxyClassFactory来创建一个代理对象。</span></span><br><span class="line">    <span class="keyword">return</span> proxyClassCache.get(loader, interfaces);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 
 <p>下面来看一下<strong>ProxyClassFactory</strong>是如何创建代理对象的。(在Proxy中有一个ProxyClassFactory静态内部类)</p>
@@ -6948,6 +6953,181 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
       <tags>
         <tag>性能优化</tag>
         <tag>meminfo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Selinux规则生成，配置，以及解决neverallow方法</title>
+    <url>/2021/08/18/Selinux%E8%A7%84%E5%88%99%E7%94%9F%E6%88%90%EF%BC%8C%E9%85%8D%E7%BD%AE%EF%BC%8C%E4%BB%A5%E5%8F%8A%E8%A7%A3%E5%86%B3neverallow%E6%96%B9%E6%B3%95/</url>
+    <content><![CDATA[<h4 id="1-收集"><a href="#1-收集" class="headerlink" title="1.收集"></a>1.收集</h4><p>查看Selinux当前安全策略模式</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">getenforce</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Enforcing  强制模式</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> Permissive 兼容模式</span></span><br></pre></td></tr></table></figure>
+
+
+<p>设置Selinux模式</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 设置Selinux为兼容模式</span></span><br><span class="line">setenforce 0</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置Selinux为强制模式</span></span><br><span class="line">setenforce 1</span><br></pre></td></tr></table></figure>
+
+
+<h5 id="1-1-收集日志"><a href="#1-1-收集日志" class="headerlink" title="1.1 收集日志"></a>1.1 收集日志</h5><ul>
+<li><p>将selinux安全模式设置成兼容模式，然后运行自己的应用，点检全功能，最后导出dlt或者logcat日志。</p>
+</li>
+<li><p>搜索<code>avc：</code>并且取出对应的日志，取名为xxx.txt （例如denied.txt）</p>
+</li>
+<li><p>使用audit2allow 工具转化日志成规则</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">audit2allow -i denied.txt &gt; selinux_rule.txt</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h4 id="2-配置规则"><a href="#2-配置规则" class="headerlink" title="2 配置规则"></a>2 配置规则</h4><p>获取到selinux_rule.txt如下</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">============= bluetooth ==============</span></span><br><span class="line">allow bluetooth mediametrics_service:service_manager find;</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">============= g7ph_x5r ==============</span></span><br><span class="line">allow g7ph_x5r ip_exec:file &#123; execute execute_no_trans getattr map open read &#125;;</span><br><span class="line">allow g7ph_x5r net_data_file:dir search;</span><br><span class="line">allow g7ph_x5r net_data_file:file &#123; getattr open read &#125;;</span><br><span class="line">allow g7ph_x5r proc_cmdline:file &#123; open read &#125;;</span><br><span class="line">allow g7ph_x5r self:capability net_admin;</span><br><span class="line">allow g7ph_x5r self:netlink_route_socket &#123; bind create getattr nlmsg_write read setopt write &#125;;</span><br><span class="line">allow g7ph_x5r self:udp_socket &#123; create ioctl &#125;;</span><br><span class="line">allow g7ph_x5r vendor_toolbox_exec:file &#123; execute execute_no_trans map &#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">============= hal_audio_default ==============</span></span><br><span class="line">allow hal_audio_default hal_vehicle_hwservice:hwservice_manager find;</span><br><span class="line">allow hal_audio_default netd:unix_stream_socket connectto;</span><br><span class="line">allow hal_audio_default self:tcp_socket &#123; connect create &#125;;</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">============= bluetooth ==============</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> 这一行中的bluetooth代表bluetooth.te文件，在device目录找到对应要生效的te把规则加入进去，保证编译通过验证一下还有没有其他规则报出来，如果没有了就说明通过了。</span></span><br></pre></td></tr></table></figure>
+
+
+<h4 id="3-检查配置"><a href="#3-检查配置" class="headerlink" title="3.检查配置"></a>3.检查配置</h4><p>有的时候权限明明加进去了却还是报相同的错误,这个时候你就得检查你是否加对地方了。</p>
+<p>查看如下目录是否有配置的策略。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">out/target/product/msmnile_gvmq/obj/ETC/sepolicy.recovery_intermediates/sepolicy.recovery.conf</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>Android</tag>
+        <tag>Selinux</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>性能优化--分析应用性能</title>
+    <url>/2021/08/15/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96-%E5%88%86%E6%9E%90%E5%BA%94%E7%94%A8%E6%80%A7%E8%83%BD/</url>
+    <content><![CDATA[<h4 id="1-概述"><a href="#1-概述" class="headerlink" title="1.概述"></a>1.概述</h4><p>对于应用来说响应速度慢、动画播放不流畅、卡顿或耗电量过高，就表示应用的性能不佳。若要解决性能问题，就需要找出应用在哪些情况下不能有效地利用资源（例如 CPU、内存、图形、网络和设备电池）。权衡一个应用的性能好坏的主要几个指标是：CPU，内存，网络，能耗，崩溃率，ANR率和APK大小。针对前面4项性能指标，google提供了对应的工具以便开发者分析自身应用。</p>
+<ul>
+<li><strong>CPU 性能分析器</strong>：此工具有助于查出运行时性能问题。</li>
+<li><strong>内存性能分析器</strong>：此工具有助于跟踪内存分配情况。</li>
+<li><strong>网络性能分析器</strong>：此工具可监控网络流量使用情况。</li>
+<li><strong>能耗性能分析器</strong>：此工具会跟踪能耗情况，这有助于分析电池电量消耗。</li>
+</ul>
+<p>如需了解如何使用这些工具，请参阅 <a href="https://developer.android.com/studio/profile/android-profiler">Android Studio 性能分析器</a>页面。</p>
+<p>针对应用细节性能指标，借助 Jetpack 基准库衡量各种重要操作：</p>
+<ul>
+<li><strong>Macrobenchmark</strong>：衡量重要的性能用例，包括应用启动性能用例和由操作触发的重新绘制时性能用例，例如界面动画或滚动。</li>
+<li><strong>Benchmark</strong>：衡量特定函数的 CPU 开销。</li>
+</ul>
+<p>如需详细了解这些库，请参阅<a href="https://developer.android.com/studio/profile/benchmarking-overview">对应用进行基准化分析</a>页面。</p>
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>性能优化</tag>
+        <tag>应用优化概述</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>生成bootchart(系统优化)</title>
+    <url>/2021/08/30/%E7%94%9F%E6%88%90bootchart-%E7%B3%BB%E7%BB%9F%E4%BC%98%E5%8C%96/</url>
+    <content><![CDATA[<h4 id="1-bootchart的启动过程"><a href="#1-bootchart的启动过程" class="headerlink" title="1.bootchart的启动过程"></a>1.bootchart的启动过程</h4><p>bootchart的启动时在init.rc中被解析，然后在on post-fs-data阶段data分区挂载之后开启，当收到<code>sys.boot_completed</code>属性置1之后，结束采集bootchart。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">on post-fs-data</span><br><span class="line">	......</span><br><span class="line"><span class="meta">	#</span><span class="bash"> Start bootcharting as soon as possible after the data partition is</span></span><br><span class="line">    # mounted to collect more data.</span><br><span class="line">    mkdir /data/bootchart 0755 shell shell</span><br><span class="line">    bootchart start</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 这里由于系统车机系统定制了，采集的bootchart时间只有20s左右特别短，需要自定义一个属性，开发早期需要看到launcher起来了，手动设置一个属性关闭bootchart</span></span><br><span class="line">on property:sys.boot_completed=1</span><br><span class="line">    bootchart stop</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="2-采集bootchart开关"><a href="#2-采集bootchart开关" class="headerlink" title="2.采集bootchart开关"></a>2.采集bootchart开关</h4><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> Result&lt;Success&gt; <span class="title">do_bootchart_start</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// We don&#x27;t care about the content, but we do care that /data/bootchart/enabled actually exists.</span></span><br><span class="line">    <span class="comment">// 只要/data/bootchart/enabled文件存在，就开启一个线程开始统计bootchart</span></span><br><span class="line">    <span class="built_in">std</span>::<span class="built_in">string</span> start;</span><br><span class="line">    <span class="keyword">if</span> (!android::base::ReadFileToString(<span class="string">&quot;/data/bootchart/enabled&quot;</span>, &amp;start)) &#123;</span><br><span class="line">        LOG(VERBOSE) &lt;&lt; <span class="string">&quot;Not bootcharting&quot;</span>;</span><br><span class="line">        <span class="keyword">return</span> Success();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    g_bootcharting_thread = <span class="keyword">new</span> <span class="built_in">std</span>::thread(bootchart_thread_main);</span><br><span class="line">    <span class="keyword">return</span> Success();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="3-制作bootchart图片"><a href="#3-制作bootchart图片" class="headerlink" title="3.制作bootchart图片"></a>3.制作bootchart图片</h4><p>采集结束之后，会在/data/bootchart目录生成<code>header</code>,<code>proc_diskstats.log</code>,<code>proc_ps.log</code>,<code>proc_stat.log</code>这四个文件，将这四个文件从车机pull出来导入服务器。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 使用tar -czf bootchart.tgz *，打包所有文件成bootchart.tgz</span></span><br><span class="line">jieou@gxatek-fw-no:/work/jieou/tools/bootchart$ ls</span><br><span class="line">bootchart.tgz  enabled  header  proc_diskstats.log  proc_ps.log  proc_stat.log</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 使用bootchart 工具生成图片</span></span><br><span class="line">bootchart bootchart.tgz</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="4-生成结果"><a href="#4-生成结果" class="headerlink" title="4.生成结果"></a>4.生成结果</h4><p>从结果里面看到其实还有很多服务都没有启动结束，而且launcher都没有启动起来。因此就需要第一小节中提到的，需要修改bootchart采集结束的属性，通过手动结束结束bootchart</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-cf936b4a17a125c5.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="bootchart.png"></p>
+<h4 id="5-修改之后的bootchart"><a href="#5-修改之后的bootchart" class="headerlink" title="5.修改之后的bootchart"></a>5.修改之后的bootchart</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-052d4adab589aa9b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="bootchart.png"></p>
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>Android</tag>
+        <tag>bootchart</tag>
+        <tag>系统优化</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>调查地图发大数据量广播，导致接收端被kill的异常</title>
+    <url>/2021/08/18/%E8%A7%A3%E5%86%B3%E5%9C%B0%E5%9B%BE%E5%8F%91%E5%A4%A7%E6%95%B0%E6%8D%AE%E9%87%8F%E5%B9%BF%E6%92%AD%EF%BC%8C%E5%AF%BC%E8%87%B4%E6%8E%A5%E6%94%B6%E7%AB%AF%E8%A2%ABkill%E7%9A%84%E5%BC%82%E5%B8%B8/</url>
+    <content><![CDATA[<p>1.</p>
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>问题集</tag>
+        <tag>广播异常</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>解析cat /proc/meminfo</title>
+    <url>/2021/08/16/%E8%A7%A3%E6%9E%90cat-proc-meminfo/</url>
+    <content><![CDATA[<h4 id="1-车机原始数据"><a href="#1-车机原始数据" class="headerlink" title="1.车机原始数据"></a>1.车机原始数据</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cat /proc/meminfo</span><br></pre></td></tr></table></figure>
+<p>以上指令可以打印内存信息如下。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">MemTotal:        <span class="number">6266692</span> kB  <span class="comment">// 所有可用的内存大小，物理内存减去预留位和内核使用。系统从加电开始到引导完成，firmware/BIOS要预留一些内存，内核本身要占用一些内存，最后剩下可供内核支配的内存就是MemTotal。这个值在系统运行期间一般是固定不变的，重启会改变。</span></span><br><span class="line">MemFree:         <span class="number">1836516</span> kB  <span class="comment">//表示系统尚未使用的内存。</span></span><br><span class="line">MemAvailable:    <span class="number">3738928</span> kB  <span class="comment">//真正的系统可用内存，系统中有些内存虽然已被使用但是可以回收的，比如cache/buffer、slab都有一部分可以回收，所以这部分可回收的内存加上MemFree才是系统可用的内存</span></span><br><span class="line">Buffers:           <span class="number">67152</span> kB  <span class="comment">//用来给块设备做缓存的内存，(文件系统的 metadata、pages)</span></span><br><span class="line">Cached:          <span class="number">1793152</span> kB  <span class="comment">//分配给文件缓冲区的内存,例如vi一个文件，就会将未保存的内容写到该缓冲区</span></span><br><span class="line">SwapCached:            <span class="number">0</span> kB  <span class="comment">//被高速缓冲存储用的交换空间（硬盘的swap）的大小</span></span><br><span class="line">Active:          <span class="number">1996864</span> kB  <span class="comment">//经常使用的高速缓冲存储器页面文件大小</span></span><br><span class="line">Inactive:        <span class="number">1430604</span> kB  <span class="comment">//不经常使用的高速缓冲存储器文件大小</span></span><br><span class="line">Active(anon):    <span class="number">1569732</span> kB  <span class="comment">//活跃的匿名内存</span></span><br><span class="line">Inactive(anon):     <span class="number">1604</span> kB  <span class="comment">//不活跃的匿名内存</span></span><br><span class="line">Active(file):     <span class="number">427132</span> kB  <span class="comment">//活跃的文件使用内存</span></span><br><span class="line">Inactive(file):  <span class="number">1429000</span> kB  <span class="comment">//不活跃的文件使用内存</span></span><br><span class="line">Unevictable:        <span class="number">2876</span> kB  <span class="comment">//不能被释放的内存页</span></span><br><span class="line">Mlocked:            <span class="number">2876</span> kB  <span class="comment">//系统调用 mlock 家族允许程序在物理内存上锁住它的部分或全部地址空间。这将阻止Linux 将这个内存页调度到交换空间（swap space），即使该程序已有一段时间没有访问这段空间</span></span><br><span class="line">SwapTotal:             <span class="number">0</span> kB  <span class="comment">//交换空间总内存</span></span><br><span class="line">SwapFree:              <span class="number">0</span> kB  <span class="comment">//交换空间空闲内存</span></span><br><span class="line">Dirty:               <span class="number">900</span> kB  <span class="comment">//等待被写回到磁盘的</span></span><br><span class="line">Writeback:             <span class="number">0</span> kB  <span class="comment">//正在被写回的</span></span><br><span class="line">AnonPages:       <span class="number">1569960</span> kB  <span class="comment">//未映射页的内存/映射到用户空间的非文件页表大小</span></span><br><span class="line">Mapped:           <span class="number">952644</span> kB  <span class="comment">//映射文件内存</span></span><br><span class="line">Shmem:              <span class="number">1896</span> kB  <span class="comment">//已经被分配的共享内存</span></span><br><span class="line">Slab:             <span class="number">270360</span> kB  <span class="comment">//内核数据结构缓存</span></span><br><span class="line">SReclaimable:      <span class="number">98248</span> kB  <span class="comment">//可收回slab内存</span></span><br><span class="line">SUnreclaim:       <span class="number">172112</span> kB  <span class="comment">//不可收回slab内存</span></span><br><span class="line">KernelStack:       <span class="number">51008</span> kB  <span class="comment">//内核消耗的内存</span></span><br><span class="line">PageTables:        <span class="number">72332</span> kB  <span class="comment">//管理内存分页的索引表的大小</span></span><br><span class="line">NFS_Unstable:          <span class="number">0</span> kB  <span class="comment">//不稳定页表的大小</span></span><br><span class="line">Bounce:                <span class="number">0</span> kB  <span class="comment">//在低端内存中分配一个临时buffer作为跳转，把位于高端内存的缓存数据复制到此处消耗的内存</span></span><br><span class="line">WritebackTmp:          <span class="number">0</span> kB  <span class="comment">//FUSE用于临时写回缓冲区的内存</span></span><br><span class="line">CommitLimit:     <span class="number">3133344</span> kB  <span class="comment">//系统实际可分配内存</span></span><br><span class="line">Committed_AS:   <span class="number">174521232</span> kB  <span class="comment">//系统当前已分配的内存</span></span><br><span class="line">VmallocTotal:   <span class="number">263061440</span> kB  <span class="comment">//预留的虚拟内存总量</span></span><br><span class="line">VmallocUsed:      <span class="number">138388</span> kB  <span class="comment">//已经被使用的虚拟内存</span></span><br><span class="line">VmallocChunk:          <span class="number">0</span> kB  <span class="comment">//可分配的最大的逻辑连续的虚拟内存</span></span><br><span class="line">CmaTotal:         <span class="number">401408</span> kB  </span><br><span class="line">CmaFree:          <span class="number">397656</span> kB  </span><br></pre></td></tr></table></figure>
+
+
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>性能优化</tag>
+        <tag>meminfo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>调查地图发大数据量广播，导致接收端被kill的异常</title>
+    <url>/2021/08/18/%E8%B0%83%E6%9F%A5%E5%9C%B0%E5%9B%BE%E5%8F%91%E5%A4%A7%E6%95%B0%E6%8D%AE%E9%87%8F%E5%B9%BF%E6%92%AD%EF%BC%8C%E5%AF%BC%E8%87%B4%E6%8E%A5%E6%94%B6%E7%AB%AF%E8%A2%ABkill%E7%9A%84%E5%BC%82%E5%B8%B8/</url>
+    <content><![CDATA[<h4 id="1-问题现象"><a href="#1-问题现象" class="headerlink" title="1.问题现象"></a>1.问题现象</h4><p>氛围灯和导航交互过程中，导航发送一个广播之后，接连有五个服务被kill掉。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">JavaBinder: !!! FAILED BINDER TRANSACTION !!!  (parcel size = <span class="number">932116</span>)</span><br><span class="line">BroadcastQueue: Can<span class="string">&#x27;t deliver broadcast to com.gxa.service.messagecenter (pid 2707). Crashing it.</span></span><br><span class="line"><span class="string">BroadcastQueue: Failure sending broadcast Intent &#123; act=com.iflytek.autofly.ACTION_MAP_SEND flg=0x10 (has extras) &#125;</span></span><br><span class="line"><span class="string">BroadcastQueue: android.os.TransactionTooLargeException: data parcel size 932116 bytes</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at android.os.BinderProxy.transactNative(Native Method)</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at android.os.BinderProxy.transact(Binder.java:1127)</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at android.app.IApplicationThread$Stub$Proxy.scheduleRegisteredReceiver(IApplicationThread.java:1152)</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at com.android.server.am.BroadcastQueue.performReceiveLocked(BroadcastQueue.java:494)</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at com.android.server.am.BroadcastQueue.deliverToRegisteredReceiverLocked(BroadcastQueue.java:706)</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at com.android.server.am.BroadcastQueue.processNextBroadcastLocked(BroadcastQueue.java:866)</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at com.android.server.am.BroadcastQueue.processNextBroadcast(BroadcastQueue.java:825)</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at com.android.server.am.BroadcastQueue$BroadcastHandler.handleMessage(BroadcastQueue.java:172)</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at android.os.Handler.dispatchMessage(Handler.java:106)</span></span><br><span class="line"><span class="string">BroadcastQueue: 	at android.os.Looper.loop(Looper.java:193)</span></span><br><span class="line"><span class="string">W BroadcastQueue: 	at android.os.HandlerThread.run(HandlerThread.java:65)</span></span><br><span class="line"><span class="string">W BroadcastQueue: 	at com.android.server.ServiceThread.run(ServiceThread.java:44)</span></span><br><span class="line"><span class="string">    </span></span><br><span class="line"><span class="string">AndroidRuntime: Shutting down VM</span></span><br><span class="line"><span class="string">JavaBinder: !!! FAILED BINDER TRANSACTION !!!  (parcel size = 932116)</span></span><br><span class="line"><span class="string">BroadcastQueue: Can&#x27;</span>t deliver broadcast to com.gxatek.cockpit.atmospherelampservice (pid <span class="number">3559</span>). Crashing it.</span><br><span class="line">AndroidRuntime: FATAL EXCEPTION: main</span><br><span class="line">AndroidRuntime: Process: com.gxa.service.messagecenter, PID: <span class="number">2707</span></span><br><span class="line">AndroidRuntime: android.app.RemoteServiceException: can<span class="string">&#x27;t deliver broadcast</span></span><br><span class="line"><span class="string">AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1745)</span></span><br><span class="line"><span class="string">AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:106)</span></span><br><span class="line"><span class="string">AndroidRuntime: 	at android.os.Looper.loop(Looper.java:193)</span></span><br><span class="line"><span class="string">AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:6718)</span></span><br><span class="line"><span class="string">AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)</span></span><br><span class="line"><span class="string">AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:493)</span></span><br><span class="line"><span class="string">AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:858)</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">// 被kill进程</span><br><span class="line">com.gxatek.cockpit.atmospherelampservice</span><br><span class="line">com.gxatek.cockpit.scenesengine</span><br><span class="line">com.iflytek.autofly.naviselect</span><br><span class="line">com.gxatek.cockpit.vpamultimode</span><br><span class="line">com.gxa.service.messagecenter</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="2-问题定位"><a href="#2-问题定位" class="headerlink" title="2.问题定位"></a>2.问题定位</h4><p>看日志大概问题是<code>FAILED BINDER TRANSACTION</code>,binder传输数据失败，<code>parcel size = 932116</code>parcel大小为932116字节。</p>
+<p>然后一看是<code>BroadcastQueue</code>类报出来的，于是乎找到报错的地方</p>
+<blockquote>
+<p>frameworks/base/services/core/java/com/android/server/am/BroadcastQueue.java</p>
+</blockquote>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-bfb8e289ca844e90.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="报错点.png"></p>
+<p>可以看到调用对端的<code>scheduleRegisteredReceiver</code>方法的时候报了异常，然后捕获异常中输出日志，最后throw一个异常，导致对端进程crash。</p>
+<h4 id="3-问题调查"><a href="#3-问题调查" class="headerlink" title="3.问题调查"></a>3.问题调查</h4><p>在源码中添加日志如下，打出两端进程信息，看看广播交互情况。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-b86f17935580ea42.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="调查添加日志.png"></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">BroadcastQueue: performReceiveLocked CallingPid = <span class="number">786</span>, CallingUid = <span class="number">1000</span></span><br><span class="line">BroadcastQueue: intent = Intent &#123; act=com.iflytek.autofly.ACTION_MAP_SEND flg=<span class="number">0x10</span> (has extras) &#125;, data = <span class="keyword">null</span></span><br><span class="line">BroadcastQueue: processname = com.gxatek.cockpit.atmospherelampservice, thread name = android.app.IApplicationThread$Stub$Proxy<span class="meta">@d42f0e6</span></span><br><span class="line"></span><br><span class="line">BroadcastQueue: performReceiveLocked CallingPid = <span class="number">786</span>, CallingUid = <span class="number">1000</span></span><br><span class="line">BroadcastQueue: intent = Intent &#123; act=com.iflytek.autofly.ACTION_MAP_SEND flg=<span class="number">0x10</span> (has extras) &#125;, data = <span class="keyword">null</span></span><br><span class="line">BroadcastQueue: processname = com.gxatek.cockpit.scenesengine, thread name = android.app.IApplicationThread$Stub$Proxy@9f803ef</span><br></pre></td></tr></table></figure>
+
+
+<p>找到交互双方之后就开始调查是哪一方发送了过大广播。首先注销掉地图的接收广播，只给地图发广播，发现消息中心不会被kill，然后一个一个广播试监听那个广播报的传输数据量过大。最后发现监听<code>com.iflytek.autofly.ACTION_MAP_SEND</code>这个广播，一交互就报<code>toolargeException</code>而崩溃，基本定位到地图发送该广播intent内容超限。</p>
+<p>经过地图调查发现：AR导航测试的功能广播打开，导致数据量过大。</p>
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>问题集</tag>
+        <tag>广播异常</tag>
       </tags>
   </entry>
 </search>
