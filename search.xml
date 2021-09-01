@@ -5198,10 +5198,7 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
     <title>Handler机制</title>
     <url>/2021/01/27/Handler%E6%9C%BA%E5%88%B6/</url>
     <content><![CDATA[<h3 id="1-Handler的诞生"><a href="#1-Handler的诞生" class="headerlink" title="1.Handler的诞生"></a>1.Handler的诞生</h3><p>由于Android采用的是单线程模式，开发者无法在子线程中更新 UI，因此在Android开发中，经常会在子线程中进行一些操作，当操作完成之后，将结果发送到主线程进行显示。探索其背后的模式：子线程、Handler和主线程三者组成了生产者和消费者模式。子线程负责生产数据，主线程负责消费数据，而<strong>Handler负责将数据从子线程抛到主线程中</strong>。详细见下图</p>
-<img src="/2021/01/27/Handler%E6%9C%BA%E5%88%B6/Handler%E7%94%9F%E4%BA%A7%E8%80%85%E6%B6%88%E8%B4%B9%E8%80%85%E6%A8%A1%E5%9E%8B.png" class title="[Handler生产者消费者模型]">
-
-
-
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-d554768db7482df1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Handler生产者消费者模型.png"></p>
 <h3 id="2-Handler相关的类"><a href="#2-Handler相关的类" class="headerlink" title="2.Handler相关的类"></a>2.Handler相关的类</h3><ul>
 <li>Hanlder：发送和接收消息 </li>
 <li>Looper：用于轮询消息队列，一个线程只能有一个Looper </li>
@@ -5237,10 +5234,7 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
 
 
 <h4 id="2-7-Handler发送消息"><a href="#2-7-Handler发送消息" class="headerlink" title="2.7 Handler发送消息"></a>2.7 Handler发送消息</h4><p>如下图调用关系，Handler发送消息的重载方法很多，但是主要只有2种。 sendMessage(Message) sendMessage方法通过一系列重载方法的调用，sendMessage调用sendMessageDelayed，继续调用sendMessageAtTime，继续调用sendMessageAtTime，继续调用enqueueMessage，继续调用MessageQueue的enqueueMessage方法，将消息保存在消息队列中。</p>
-<img src="/2021/01/27/Handler%E6%9C%BA%E5%88%B6/%E5%8F%91%E9%80%81%E6%B6%88%E6%81%AF.png" class title="[Handler发送消息调用流程]">
-
-
-
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-b8890cf05af6a64f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="发送消息.png"></p>
 <h4 id="2-8-Handler消费消息"><a href="#2-8-Handler消费消息" class="headerlink" title="2.8 Handler消费消息"></a>2.8 Handler消费消息</h4><p>当Looper取出，交给Handler的dispatchMessage进行处理</p>
 <p>我们可以看到在dispatchMessage方法中，message中callback是一个Runnable对象，如果callback不为空，则直接调用callback的run方法，否则判断mCallback是否为空，mCallback在Handler构造方法中初始化，在主线程通直接通过无参的构造方法new出来的为null,所以会直接执行后面的handleMessage()方法。</p>
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">dispatchMessage</span><span class="params">(<span class="meta">@NonNull</span> Message msg)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (msg.callback != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="comment">//callback在message的构造方法中初始化或者使用handler.post(Runnable)时候才不为空</span></span><br><span class="line">        handleCallback(msg); </span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (mCallback != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (mCallback.handleMessage(msg)) &#123;<span class="comment">//如果callback不为空就调用callback的run()方法</span></span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//如果没有Runnable,就回调handler重写的handleMessage()方法。</span></span><br><span class="line">        <span class="comment">//注意，不管是否设置callback都会回调handleMessage()方法</span></span><br><span class="line">        handleMessage(msg);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -5262,12 +5256,7 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//MessageQueue.java</span></span><br><span class="line"></span><br><span class="line"><span class="function">Message <span class="title">next</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	.....<span class="comment">//省略一些代码</span></span><br><span class="line">    <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">        <span class="keyword">if</span> (nextPollTimeoutMillis != <span class="number">0</span>) &#123;</span><br><span class="line">            Binder.flushPendingCommands();</span><br><span class="line">        &#125;</span><br><span class="line">        nativePollOnce(ptr, nextPollTimeoutMillis);</span><br><span class="line">        <span class="keyword">synchronized</span> (<span class="keyword">this</span>) &#123;</span><br><span class="line">            <span class="comment">//获取系统开机到现在的时间</span></span><br><span class="line">            <span class="keyword">final</span> <span class="keyword">long</span> now = SystemClock.uptimeMillis();</span><br><span class="line">            Message prevMsg = <span class="keyword">null</span>;</span><br><span class="line">            Message msg = mMessages; <span class="comment">//当前链表的头结点</span></span><br><span class="line">            </span><br><span class="line">            <span class="comment">//关键！！！</span></span><br><span class="line">            <span class="comment">//如果target==null，那么它就是屏障，需要循环遍历，一直往后找到第一个异步的消息</span></span><br><span class="line">            <span class="keyword">if</span> (msg != <span class="keyword">null</span> &amp;&amp; msg.target == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="comment">// Stalled by a barrier.  Find the next asynchronous message in the queue.</span></span><br><span class="line">                <span class="keyword">do</span> &#123;</span><br><span class="line">                    prevMsg = msg;</span><br><span class="line">                    msg = msg.next; <span class="comment">//=====重新给msg赋值，达到优先返回异步消息的作用===</span></span><br><span class="line">                &#125; <span class="keyword">while</span> (msg != <span class="keyword">null</span> &amp;&amp; !msg.isAsynchronous());<span class="comment">//如果有异步消息</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (msg != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="comment">//如果有时间到的消息就返回，否则就等待。</span></span><br><span class="line">            &#125;</span><br><span class="line">            .....<span class="comment">//省略</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>如果开启了同步屏障，在返回的msg中会被重新赋值，所以如果开启了同步屏障，MessageQueue会遍历队列中是否有时间到了的异步消息，如果有就重新给msg赋值让他返回出去给handler处理。</p>
 <p>示意图如下：</p>
-<img src="/2021/01/27/Handler%E6%9C%BA%E5%88%B6/%E5%90%8C%E6%AD%A5%E5%B1%8F%E9%9A%9C%E7%A4%BA%E6%84%8F%E5%9B%BE.png" class title="[同步屏障示意图]">
-
-
-
-
-
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-26531ed2e7963895.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="同步屏障示意图.png"></p>
 <h5 id="3-2-3-同步屏障的使用场景"><a href="#3-2-3-同步屏障的使用场景" class="headerlink" title="3.2.3 同步屏障的使用场景"></a>3.2.3 同步屏障的使用场景</h5><p>在 View 更新时，draw、requestLayout、invalidate 等很多地方都调用<code>ViewRootImpl#scheduleTraversals()</code>，如下</p>
 <figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//ViewRootImpl.java</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scheduleTraversals</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!mTraversalScheduled) &#123;</span><br><span class="line">        mTraversalScheduled = <span class="keyword">true</span>;</span><br><span class="line">        <span class="comment">//开启同步屏障</span></span><br><span class="line">        mTraversalBarrier = mHandler.getLooper().getQueue().postSyncBarrier();</span><br><span class="line">        <span class="comment">//发送异步消息</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">// Choreographer.postCallback最终会调用到postCallbackDelayedInternal()，在这里面设置为异步消息并且发送到消息队列中</span></span><br><span class="line">        <span class="comment">// mTraversalRunnable中会移除同步屏障并且执行UI更新</span></span><br><span class="line">        mChoreographer.postCallback(</span><br><span class="line">                Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, <span class="keyword">null</span>);</span><br><span class="line">        <span class="keyword">if</span> (!mUnbufferedInputDispatch) &#123;</span><br><span class="line">            scheduleConsumeBatchedInput();</span><br><span class="line">        &#125;</span><br><span class="line">        notifyRendererOfFramePending();</span><br><span class="line">        pokeDrawLockIfNeeded();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -7128,6 +7117,604 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
       <tags>
         <tag>问题集</tag>
         <tag>广播异常</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Handler机制——底层实现机制</title>
+    <url>/2021/09/01/Handler%E6%9C%BA%E5%88%B6%E2%80%94%E2%80%94%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<h4 id="1-回顾"><a href="#1-回顾" class="headerlink" title="1.回顾"></a>1.回顾</h4><p>我们在上一篇文章<a href="http://jackou.top/2021/01/27/Handler%E6%9C%BA%E5%88%B6/">《Handler机制》</a>中详细叙述了Handler运行机制的java层实现，每当分析到jni,就只简要说明了下底层做了什么，因此，我们在这篇文章中详细来分析一下Handler的底层代码，看看底层是如何实现的。首先列出底层有那些方法。先分析简单的。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// frameworks/base/core/java/android/os/MessageQueue.java</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">native</span> <span class="keyword">static</span> <span class="keyword">long</span> <span class="title">nativeInit</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">native</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">nativeDestroy</span><span class="params">(<span class="keyword">long</span> ptr)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">native</span> <span class="keyword">void</span> <span class="title">nativePollOnce</span><span class="params">(<span class="keyword">long</span> ptr, <span class="keyword">int</span> timeoutMillis)</span></span>; <span class="comment">/*non-static for callbacks*/</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">native</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">nativeWake</span><span class="params">(<span class="keyword">long</span> ptr)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">native</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">nativeIsPolling</span><span class="params">(<span class="keyword">long</span> ptr)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">native</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">nativeSetFileDescriptorEvents</span><span class="params">(<span class="keyword">long</span> ptr, <span class="keyword">int</span> fd, <span class="keyword">int</span> events)</span></span>;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="2-nativeInit-分析"><a href="#2-nativeInit-分析" class="headerlink" title="2.nativeInit()分析"></a>2.nativeInit()分析</h4><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">// frameworks\base\core\jni\android_os_MessageQueue.cpp</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> jlong <span class="title">android_os_MessageQueue_nativeInit</span><span class="params">(JNIEnv* env, jclass clazz)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 实例化一个NativeMessageQueue对象</span></span><br><span class="line">    NativeMessageQueue* nativeMessageQueue = <span class="keyword">new</span> NativeMessageQueue();</span><br><span class="line">    <span class="keyword">if</span> (!nativeMessageQueue) &#123;</span><br><span class="line">        jniThrowRuntimeException(env, <span class="string">&quot;Unable to allocate native queue&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 强引用计数+1</span></span><br><span class="line">    nativeMessageQueue-&gt;incStrong(env);</span><br><span class="line">    <span class="comment">// 将对象地址转化成jlong型，赋值给java层的mPtr参数，以后访问native中的messagequeue对象就通过该指针找到他。</span></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">reinterpret_cast</span>&lt;jlong&gt;(nativeMessageQueue);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="3-nativeDestroy-分析"><a href="#3-nativeDestroy-分析" class="headerlink" title="3.nativeDestroy()分析"></a>3.nativeDestroy()分析</h4><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">android_os_MessageQueue_nativeDestroy</span><span class="params">(JNIEnv* env, jclass clazz, jlong ptr)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 通过ptr找到messagequeue对象</span></span><br><span class="line">    NativeMessageQueue* nativeMessageQueue = <span class="keyword">reinterpret_cast</span>&lt;NativeMessageQueue*&gt;(ptr);</span><br><span class="line">    <span class="comment">// 引用计数减一</span></span><br><span class="line">    nativeMessageQueue-&gt;decStrong(env);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="4-nativeIsPolling-分析"><a href="#4-nativeIsPolling-分析" class="headerlink" title="4.nativeIsPolling()分析"></a>4.nativeIsPolling()分析</h4><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> jboolean <span class="title">android_os_MessageQueue_nativeIsPolling</span><span class="params">(JNIEnv* env, jclass clazz, jlong ptr)</span> </span>&#123;</span><br><span class="line">    NativeMessageQueue* nativeMessageQueue = <span class="keyword">reinterpret_cast</span>&lt;NativeMessageQueue*&gt;(ptr);</span><br><span class="line">    <span class="comment">// 返回当前poll是否空闲，true为空闲，正在等待监听事件产生</span></span><br><span class="line">    <span class="comment">// mPolling在pollInner中被赋值</span></span><br><span class="line">    <span class="keyword">return</span> nativeMessageQueue-&gt;getLooper()-&gt;isPolling();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="5-nativeSetFileDescriptorEvents-分析"><a href="#5-nativeSetFileDescriptorEvents-分析" class="headerlink" title="5.nativeSetFileDescriptorEvents()分析"></a>5.nativeSetFileDescriptorEvents()分析</h4><p>nativeSetFileDescriptorEvents()给java层提供了一个接口，上层可以自己选择要监听的事件，事件分为：</p>
+<ul>
+<li>EVENT_INPUT</li>
+<li>EVENT_OUTPUT</li>
+<li>EVENT_ERROR</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">android_os_MessageQueue_nativeSetFileDescriptorEvents</span><span class="params">(JNIEnv* env, jclass clazz,</span></span></span><br><span class="line"><span class="function"><span class="params">        jlong ptr, jint fd, jint events)</span> </span>&#123;</span><br><span class="line">    NativeMessageQueue* nativeMessageQueue = <span class="keyword">reinterpret_cast</span>&lt;NativeMessageQueue*&gt;(ptr);</span><br><span class="line">    nativeMessageQueue-&gt;setFileDescriptorEvents(fd, events);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="6-nativePollOnce-分析"><a href="#6-nativePollOnce-分析" class="headerlink" title="6.nativePollOnce()分析"></a>6.nativePollOnce()分析</h4><p>下面开始分析重头戏，开始分析nativePollOnce()和nativeWake()两个方法</p>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">android_os_MessageQueue_nativePollOnce</span><span class="params">(JNIEnv* env, jobject obj,</span></span></span><br><span class="line"><span class="function"><span class="params">        jlong ptr, jint timeoutMillis)</span> </span>&#123;</span><br><span class="line">    NativeMessageQueue* nativeMessageQueue = <span class="keyword">reinterpret_cast</span>&lt;NativeMessageQueue*&gt;(ptr);</span><br><span class="line">    <span class="comment">// 调用到messagequeue的pollonce方法中去。</span></span><br><span class="line">    nativeMessageQueue-&gt;pollOnce(env, obj, timeoutMillis);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">NativeMessageQueue::pollOnce</span><span class="params">(JNIEnv* env, jobject pollObj, <span class="keyword">int</span> timeoutMillis)</span> </span>&#123;</span><br><span class="line">    mPollEnv = env;</span><br><span class="line">    mPollObj = pollObj;</span><br><span class="line">    <span class="comment">// 调用到Looper的pollOnce方法，并且传入超时时间</span></span><br><span class="line">    mLooper-&gt;pollOnce(timeoutMillis);</span><br><span class="line">    mPollObj = <span class="literal">NULL</span>;</span><br><span class="line">    mPollEnv = <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (mExceptionObj) &#123;</span><br><span class="line">        env-&gt;Throw(mExceptionObj);</span><br><span class="line">        env-&gt;DeleteLocalRef(mExceptionObj);</span><br><span class="line">        mExceptionObj = <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">// system\core\libutils\Looper.cpp</span></span><br><span class="line"><span class="function"><span class="keyword">inline</span> <span class="keyword">int</span> <span class="title">pollOnce</span><span class="params">(<span class="keyword">int</span> timeoutMillis)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> pollOnce(timeoutMillis, <span class="literal">NULL</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">Looper::pollOnce</span><span class="params">(<span class="keyword">int</span> timeoutMillis, <span class="keyword">int</span>* outFd, <span class="keyword">int</span>* outEvents, <span class="keyword">void</span>** outData)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> result = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">        ......</span><br><span class="line">		<span class="comment">// 判断pollInner处理的结果</span></span><br><span class="line">        <span class="keyword">if</span> (result != <span class="number">0</span>) &#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> DEBUG_POLL_AND_WAKE</span></span><br><span class="line">            ALOGD(<span class="string">&quot;%p ~ pollOnce - returning result %d&quot;</span>, <span class="keyword">this</span>, result);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">            <span class="keyword">if</span> (outFd != <span class="literal">NULL</span>) *outFd = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">if</span> (outEvents != <span class="literal">NULL</span>) *outEvents = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">if</span> (outData != <span class="literal">NULL</span>) *outData = <span class="literal">NULL</span>;</span><br><span class="line">            <span class="keyword">return</span> result;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        result = pollInner(timeoutMillis);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>result代表pollinner中epoll处理事件的状态</p>
+<ul>
+<li>POLL_WAKE：调用wate()说明正在等待事件发生</li>
+<li>POLL_CALLBACK：将结果返回给回调</li>
+<li>POLL_TIMEOUT：epoll_wait()超时</li>
+<li>POLL_ERROR:内部错误</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">Looper::pollInner</span><span class="params">(<span class="keyword">int</span> timeoutMillis)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Adjust the timeout based on when the next message is due.</span></span><br><span class="line">    <span class="comment">// 调整超时事件</span></span><br><span class="line">    <span class="keyword">if</span> (timeoutMillis != <span class="number">0</span> &amp;&amp; mNextMessageUptime != LLONG_MAX) &#123;</span><br><span class="line">        <span class="keyword">nsecs_t</span> now = systemTime(SYSTEM_TIME_MONOTONIC);</span><br><span class="line">        <span class="keyword">int</span> messageTimeoutMillis = toMillisecondTimeoutDelay(now, mNextMessageUptime);</span><br><span class="line">        <span class="keyword">if</span> (messageTimeoutMillis &gt;= <span class="number">0</span></span><br><span class="line">                &amp;&amp; (timeoutMillis &lt; <span class="number">0</span> || messageTimeoutMillis &lt; timeoutMillis)) &#123;</span><br><span class="line">            timeoutMillis = messageTimeoutMillis;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Poll.</span></span><br><span class="line">    <span class="keyword">int</span> result = POLL_WAKE;</span><br><span class="line">    mResponses.clear();</span><br><span class="line">    mResponseIndex = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// We are about to idle.</span></span><br><span class="line">    mPolling = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> <span class="title">eventItems</span>[<span class="title">EPOLL_MAX_EVENTS</span>];</span></span><br><span class="line">	<span class="comment">//阻塞整个线程，等待监听的事件发送，eventCount是epoll_wait的返回，返回需要处理的事件数目</span></span><br><span class="line">    <span class="keyword">int</span> eventCount = epoll_wait(mEpollFd, eventItems, EPOLL_MAX_EVENTS, timeoutMillis);</span><br><span class="line"></span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Check for poll timeout.</span></span><br><span class="line">    <span class="comment">// 如果过了超时事件，还没事件发生，就直接返回，通知超时</span></span><br><span class="line">    <span class="keyword">if</span> (eventCount == <span class="number">0</span>) &#123;</span><br><span class="line">        result = POLL_TIMEOUT;</span><br><span class="line">        <span class="keyword">goto</span> Done;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Handle all events.</span></span><br><span class="line">	<span class="comment">// 开始处理监听的事件</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; eventCount; i++) &#123;</span><br><span class="line">        <span class="keyword">int</span> fd = eventItems[i].data.fd;</span><br><span class="line">        <span class="keyword">uint32_t</span> epollEvents = eventItems[i].events;</span><br><span class="line">        <span class="keyword">if</span> (fd == mWakeEventFd) &#123;</span><br><span class="line">            <span class="keyword">if</span> (epollEvents &amp; EPOLLIN) &#123;</span><br><span class="line">                <span class="comment">// 如果有事件发送，并且是我们监听的fd并且是输入事件，线程则被唤醒，开始执行被阻塞下面的代码</span></span><br><span class="line">                awoken();</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                ALOGW(<span class="string">&quot;Ignoring unexpected epoll events 0x%x on wake event fd.&quot;</span>, epollEvents);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">ssize_t</span> requestIndex = mRequests.indexOfKey(fd);</span><br><span class="line">            <span class="keyword">if</span> (requestIndex &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="keyword">int</span> events = <span class="number">0</span>;</span><br><span class="line">                <span class="keyword">if</span> (epollEvents &amp; EPOLLIN) events |= EVENT_INPUT;</span><br><span class="line">                <span class="keyword">if</span> (epollEvents &amp; EPOLLOUT) events |= EVENT_OUTPUT;</span><br><span class="line">                <span class="keyword">if</span> (epollEvents &amp; EPOLLERR) events |= EVENT_ERROR;</span><br><span class="line">                <span class="keyword">if</span> (epollEvents &amp; EPOLLHUP) events |= EVENT_HANGUP;</span><br><span class="line">                pushResponse(events, mRequests.valueAt(requestIndex));</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                ALOGW(<span class="string">&quot;Ignoring unexpected epoll events 0x%x on fd %d that is &quot;</span></span><br><span class="line">                        <span class="string">&quot;no longer registered.&quot;</span>, epollEvents, fd);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">Done: ;</span><br><span class="line"></span><br><span class="line">    .....</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>看到这里，继续回顾java如何取message的</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"> <span class="function">Message <span class="title">next</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// Return here if the message loop has already quit and been disposed.</span></span><br><span class="line">        <span class="comment">// This can happen if the application tries to restart a looper after quit</span></span><br><span class="line">        <span class="comment">// which is not supported.</span></span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">long</span> ptr = mPtr;</span><br><span class="line">        <span class="keyword">if</span> (ptr == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">int</span> pendingIdleHandlerCount = -<span class="number">1</span>; <span class="comment">// -1 only during first iteration</span></span><br><span class="line">        <span class="keyword">int</span> nextPollTimeoutMillis = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">            <span class="keyword">if</span> (nextPollTimeoutMillis != <span class="number">0</span>) &#123;</span><br><span class="line">                Binder.flushPendingCommands();</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 调用nativePollOnce()线程就阻塞在这里，不继续执行下面代码</span></span><br><span class="line">            nativePollOnce(ptr, nextPollTimeoutMillis);</span><br><span class="line">            <span class="comment">// 唤醒或者阻塞超时就开始执行下面代码</span></span><br><span class="line"></span><br><span class="line">            <span class="keyword">synchronized</span> (<span class="keyword">this</span>) &#123;</span><br><span class="line">                <span class="comment">// Try to retrieve the next message.  Return if found.</span></span><br><span class="line">                <span class="keyword">final</span> <span class="keyword">long</span> now = SystemClock.uptimeMillis();</span><br><span class="line">                Message prevMsg = <span class="keyword">null</span>;</span><br><span class="line">                Message msg = mMessages;</span><br><span class="line">				<span class="comment">// 下面就是加锁取一个msg返回的逻辑</span></span><br><span class="line">				......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="6-nativeWake-分析"><a href="#6-nativeWake-分析" class="headerlink" title="6.nativeWake()分析"></a>6.nativeWake()分析</h4><p>上面我们分析了调用nativePollOnce()，线程会被阻塞，不会继续执行下面的代码，要么是被唤醒，要么超时才开始执行下面的代码。下面我们就来看一下线程是如何被唤醒的。</p>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">android_os_MessageQueue_nativeWake</span><span class="params">(JNIEnv* env, jclass clazz, jlong ptr)</span> </span>&#123;</span><br><span class="line">    NativeMessageQueue* nativeMessageQueue = <span class="keyword">reinterpret_cast</span>&lt;NativeMessageQueue*&gt;(ptr);</span><br><span class="line">    <span class="comment">// 调用messagequeue的wake()方法</span></span><br><span class="line">    nativeMessageQueue-&gt;wake();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">NativeMessageQueue::wake</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 继续往下掉用</span></span><br><span class="line">    mLooper-&gt;wake();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Looper::wake</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 写了一个1到mWakeEventFd中，激活epoll事件，然后线程就被唤醒了</span></span><br><span class="line">    <span class="keyword">uint64_t</span> inc = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">ssize_t</span> nWrite = TEMP_FAILURE_RETRY(write(mWakeEventFd, &amp;inc, <span class="keyword">sizeof</span>(<span class="keyword">uint64_t</span>)));</span><br><span class="line">    <span class="comment">// 处理错误</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>因此唤醒就特别简单，直接向监听的fd中写一个字符即可唤醒线程处理事件。</p>
+<p>未完待续，顺势推舟，下面一篇叙述一下epoll是如何使用的方法</p>
+<p>HandlerThread、JobIntentService和JobService的使用方法。参考《<a href="git@github.com:oujie123/Handler.git">Handler扩展使用</a>》</p>
+]]></content>
+      <categories>
+        <category>Framework</category>
+      </categories>
+      <tags>
+        <tag>Handler</tag>
+        <tag>Framework</tag>
+        <tag>Andriod</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>epoll使用详解</title>
+    <url>/2021/09/02/epoll%E4%BD%BF%E7%94%A8%E8%AF%A6%E8%A7%A3/</url>
+    <content><![CDATA[<h4 id="1-简介"><a href="#1-简介" class="headerlink" title="1.简介"></a>1.简介</h4><p>epoll - I/O event notification facility</p>
+<p>在linux的网络编程中，很长的时间都在使用select来做事件触发。在linux新的内核中，有了一种替换它的机制，就是epoll。<br>相比于select，epoll最大的好处在于它不会随着监听fd数目的增长而降低效率。因为在内核中的select实现中，它是采用轮询来处理的，轮询的fd数目越多，自然耗时越多。并且，在linux/posix_types.h头文件有这样的声明：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">define __FD_SETSIZE  1024</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> 表示select最多同时监听1024个fd，当然，可以通过修改头文件再重编译内核来扩大这个数目，但这似乎并不治本。</span></span><br></pre></td></tr></table></figure>
+
+
+<h4 id="2-epoll函数说明"><a href="#2-epoll函数说明" class="headerlink" title="2.epoll函数说明"></a>2.epoll函数说明</h4><p>epoll的接口非常简单，一共就三个函数：</p>
+<h5 id="2-1-int-epoll-create-int-size"><a href="#2-1-int-epoll-create-int-size" class="headerlink" title="2.1 int epoll_create(int size);"></a>2.1 int epoll_create(int size);</h5><p>创建一个epoll的句柄，size用来告诉内核这个监听的数目一共有多大。这个参数不同于select()中的第一个参数，给出最大监听的fd+1的值。需要注意的是，当创建好epoll句柄后，它就是会占用一个fd值，在linux下如果查看/proc/进程id/fd/，是能够看到这个fd的，所以在使用完epoll后，必须调用close()关闭，否则可能导致fd被耗尽。</p>
+<p>注意：size参数只是告诉内核这个 epoll对象会处理的事件大致数目，而不是能够处理的事件的最大个数。在 Linux最新的一些内核版本的实现中，这个 size参数没有任何意义。</p>
+<h5 id="2-2-int-epoll-ctl-int-epfd-int-op-int-fd-struct-epoll-event-event"><a href="#2-2-int-epoll-ctl-int-epfd-int-op-int-fd-struct-epoll-event-event" class="headerlink" title="2.2 int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);"></a>2.2 int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);</h5><p>epoll的事件注册函数，epoll_ctl向 epoll对象中添加、修改或者删除感兴趣的事件，返回0表示成功，否则返回–1，此时需要根据errno错误码判断错误类型。</p>
+<p>它不同与select()是在监听事件时告诉内核要监听什么类型的事件，而是在这里先注册要监听的事件类型。</p>
+<p>epoll_wait方法返回的事件必然是通过 epoll_ctl添加到 epoll中的。</p>
+<p>第一个参数是epoll_create()的返回值，第二个参数表示动作，用三个宏来表示：<br>EPOLL_CTL_ADD：注册新的fd到epfd中；<br>EPOLL_CTL_MOD：修改已经注册的fd的监听事件；<br>EPOLL_CTL_DEL：从epfd中删除一个fd；<br>第三个参数是需要监听的fd，第四个参数是告诉内核需要监听什么事，struct epoll_event结构如下：</p>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">union</span> <span class="title">epoll_data</span> &#123;</span></span><br><span class="line">    <span class="keyword">void</span> *ptr;</span><br><span class="line">    <span class="keyword">int</span> fd;</span><br><span class="line">    <span class="keyword">__uint32_t</span> u32;</span><br><span class="line">    <span class="keyword">__uint64_t</span> u64;</span><br><span class="line">&#125; <span class="keyword">epoll_data_t</span>;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> &#123;</span></span><br><span class="line">    <span class="keyword">__uint32_t</span> events; <span class="comment">/* Epoll events */</span></span><br><span class="line">    <span class="keyword">epoll_data_t</span> data; <span class="comment">/* User data variable */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>events可以是以下几个宏的集合：<br>EPOLLIN ：表示对应的文件描述符可以读（包括对端SOCKET正常关闭）；<br>EPOLLOUT：表示对应的文件描述符可以写；<br>EPOLLPRI：表示对应的文件描述符有紧急的数据可读（这里应该表示有带外数据到来）；<br>EPOLLERR：表示对应的文件描述符发生错误；<br>EPOLLHUP：表示对应的文件描述符被挂断；<br>EPOLLET： 将EPOLL设为边缘触发(Edge Triggered)模式，这是相对于水平触发(Level Triggered)来说的。<br>EPOLLONESHOT：只监听一次事件，当监听完这次事件之后，如果还需要继续监听这个socket的话，需要再次把这个socket加入到EPOLL队列里</p>
+<h5 id="2-3-int-epoll-wait-int-epfd-struct-epoll-event-events-int-maxevents-int-timeout"><a href="#2-3-int-epoll-wait-int-epfd-struct-epoll-event-events-int-maxevents-int-timeout" class="headerlink" title="2.3 int epoll_wait(int epfd, struct epoll_event * events, int maxevents, int timeout);"></a>2.3 int epoll_wait(int epfd, struct epoll_event * events, int maxevents, int timeout);</h5><p>等待事件的产生，类似于select()调用。参数events用来从内核得到事件的集合，maxevents告之内核这个events有多大，这个 maxevents的值不能大于创建epoll_create()时的size，参数timeout是超时时间（毫秒，0会立即返回，-1将不确定，也有说法说是永久阻塞）。该函数返回需要处理的事件数目，如返回0表示已超时。如果返回–1，则表示出现错误，需要检查 errno错误码判断错误类型。</p>
+<p>第1个参数 epfd是 epoll的描述符。</p>
+<p>第2个参数 events则是分配好的 epoll_event结构体数组，epoll将会把发生的事件复制到 events数组中（events不可以是空指针，内核只负责把数据复制到这个 events数组中，不会去帮助我们在用户态中分配内存。内核这种做法效率很高）。</p>
+<p>第3个参数 maxevents表示本次可以返回的最大事件数目，通常 maxevents参数与预分配的events数组的大小是相等的。</p>
+<p>第4个参数 timeout表示在没有检测到事件发生时最多等待的时间（单位为毫秒），如果 timeout为0，则表示 epoll_wait在 rdllist链表中为空，立刻返回，不会等待。</p>
+<h5 id="2-4-关于ET、LT两种工作模式："><a href="#2-4-关于ET、LT两种工作模式：" class="headerlink" title="2.4 关于ET、LT两种工作模式："></a>2.4 关于ET、LT两种工作模式：</h5><p>epoll有两种工作模式：LT（水平触发）模式和ET（边缘触发）模式。</p>
+<p>默认情况下，epoll采用 LT模式工作，这时可以处理阻塞和非阻塞套接字，而上表中的 EPOLLET表示可以将一个事件改为 ET模式。ET模式的效率要比 LT模式高，它只支持非阻塞套接字。</p>
+<p> ET模式与LT模式的区别在于：</p>
+<p>当一个新的事件到来时，ET模式下当然可以从 epoll_wait调用中获取到这个事件，可是如果这次没有把这个事件对应的套接字缓冲区处理完，在这个套接字没有新的事件再次到来时，在 ET模式下是无法再次从 epoll_wait调用中获取这个事件的；而 LT模式则相反，只要一个事件对应的套接字缓冲区还有数据，就总能从 epoll_wait中获取这个事件。因此，在 LT模式下开发基于 epoll的应用要简单一些，不太容易出错，而在 ET模式下事件发生时，如果没有彻底地将缓冲区数据处理完，则会导致缓冲区中的用户请求得不到响应。默认情况下，Nginx是通过 ET模式使用 epoll的。</p>
+<p>结论:<br>ET模式仅当状态发生变化的时候才获得通知,这里所谓的状态的变化并不包括缓冲区中还有未处理的数据,也就是说,如果要采用ET模式,需要一直read/write直到出错为止,很多人反映为什么采用ET模式只接收了一部分数据就再也得不到通知了,大多因为这样;而LT模式是只要有数据没有处理就会一直通知下去的.</p>
+<h4 id="3-epoll使用"><a href="#3-epoll使用" class="headerlink" title="3.epoll使用"></a>3.epoll使用</h4><p>那么究竟如何来使用epoll呢？其实非常简单。<br>通过在包含一个头文件#include &lt;sys/epoll.h&gt; 以及几个简单的API将可以大大的提高你的网络服务器的支持人数。</p>
+<p>首先通过create_epoll(int maxfds)来创建一个epoll的句柄，其中maxfds为你epoll所支持的最大句柄数。这个函数会返回一个新的epoll句柄，之后的所有操作将通过这个句柄来进行操作。在用完之后，记得用close()来关闭这个创建出来的epoll句柄。</p>
+<p>之后在你的网络主循环里面，每一帧的调用epoll_wait(int epfd, epoll_event events, int max events, int timeout)来查询所有的网络接口，看哪一个可以读，哪一个可以写了。基本的语法为：<br>nfds = epoll_wait(kdpfd, events, maxevents, -1);<br>其中kdpfd为用epoll_create创建之后的句柄，events是一个epoll_event*的指针，当epoll_wait这个函数操作成功之后，epoll_events里面将储存所有的读写事件。max_events是当前需要监听的所有socket句柄数。最后一个timeout是 epoll_wait的超时，为0的时候表示马上返回，为-1的时候表示一直等下去，直到有事件范围，为任意正整数的时候表示等这么长的时间，如果一直没有事件，则范围。一般如果网络主循环是单独的线程的话，可以用-1来等，这样可以保证一些效率，如果是和主逻辑在同一个线程的话，则可以用0来保证主循环的效率。</p>
+<p>epoll_wait范围之后应该是一个循环，遍利所有的事件。</p>
+<p>几乎所有的epoll程序都使用下面的框架：</p>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span>( ; ; )</span><br><span class="line">    &#123;</span><br><span class="line">        nfds = epoll_wait(epfd,events,<span class="number">20</span>,<span class="number">500</span>);</span><br><span class="line">        <span class="keyword">for</span>(i=<span class="number">0</span>;i&lt;nfds;++i)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(events[i].data.fd==listenfd) <span class="comment">//有新的连接</span></span><br><span class="line">            &#123;</span><br><span class="line">                connfd = accept(listenfd,(sockaddr *)&amp;clientaddr, &amp;clilen); <span class="comment">//accept这个连接</span></span><br><span class="line">                ev.data.fd=connfd;</span><br><span class="line">                ev.events=EPOLLIN|EPOLLET;</span><br><span class="line">                epoll_ctl(epfd,EPOLL_CTL_ADD,connfd,&amp;ev); <span class="comment">//将新的fd添加到epoll的监听队列中</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>( events[i].events&amp;EPOLLIN ) <span class="comment">//接收到数据，读socket</span></span><br><span class="line">            &#123;</span><br><span class="line">                n = read(sockfd, line, MAXLINE)) &lt; <span class="number">0</span>    <span class="comment">//读</span></span><br><span class="line">                ev.data.ptr = md;     <span class="comment">//md为自定义类型，添加数据</span></span><br><span class="line">                ev.events=EPOLLOUT|EPOLLET;</span><br><span class="line">                epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&amp;ev);<span class="comment">//修改标识符，等待下一个循环时发送数据，异步处理的精髓</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>(events[i].events&amp;EPOLLOUT) <span class="comment">//有数据待发送，写socket</span></span><br><span class="line">            &#123;</span><br><span class="line">                struct myepoll_data* md = (myepoll_data*)events[i].data.ptr;    <span class="comment">//取数据</span></span><br><span class="line">                sockfd = md-&gt;fd;</span><br><span class="line">                send( sockfd, md-&gt;ptr, <span class="built_in">strlen</span>((<span class="keyword">char</span>*)md-&gt;ptr), <span class="number">0</span> );        <span class="comment">//发送数据</span></span><br><span class="line">                ev.data.fd=sockfd;</span><br><span class="line">                ev.events=EPOLLIN|EPOLLET;</span><br><span class="line">                epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&amp;ev); <span class="comment">//修改标识符，等待下一个循环时接收数据</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">//其他的处理</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>服务的代码案例</p>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/socket.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/epoll.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;netinet/in.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;arpa/inet.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;errno.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="built_in">std</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MAXLINE 5</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> OPEN_MAX 100</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> LISTENQ 20</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> SERV_PORT 5000</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> INFTIM 1000</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">setnonblocking</span><span class="params">(<span class="keyword">int</span> sock)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> opts;</span><br><span class="line">    opts=fcntl(sock,F_GETFL);</span><br><span class="line">    <span class="keyword">if</span>(opts&lt;<span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        perror(<span class="string">&quot;fcntl(sock,GETFL)&quot;</span>);</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    opts = opts|O_NONBLOCK;</span><br><span class="line">    <span class="keyword">if</span>(fcntl(sock,F_SETFL,opts)&lt;<span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        perror(<span class="string">&quot;fcntl(sock,SETFL,opts)&quot;</span>);</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span>* argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> i, maxi, listenfd, connfd, sockfd,epfd,nfds, portnumber;</span><br><span class="line">    <span class="keyword">ssize_t</span> n;</span><br><span class="line">    <span class="keyword">char</span> line[MAXLINE];</span><br><span class="line">    <span class="keyword">socklen_t</span> clilen;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> ( <span class="number">2</span> == argc )</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span>( (portnumber = atoi(argv[<span class="number">1</span>])) &lt; <span class="number">0</span> )</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>,<span class="string">&quot;Usage:%s portnumber/a/n&quot;</span>,argv[<span class="number">0</span>]);</span><br><span class="line">            <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>,<span class="string">&quot;Usage:%s portnumber/a/n&quot;</span>,argv[<span class="number">0</span>]);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">//声明epoll_event结构体的变量,ev用于注册事件,数组用于回传要处理的事件</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> <span class="title">ev</span>,<span class="title">events</span>[20];</span></span><br><span class="line">    <span class="comment">//生成用于处理accept的epoll专用的文件描述符</span></span><br><span class="line"></span><br><span class="line">    epfd=epoll_create(<span class="number">256</span>);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">clientaddr</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">serveraddr</span>;</span></span><br><span class="line">    listenfd = socket(AF_INET, SOCK_STREAM, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">//把socket设置为非阻塞方式</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//setnonblocking(listenfd);</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//设置与要处理的事件相关的文件描述符</span></span><br><span class="line"></span><br><span class="line">    ev.data.fd=listenfd;</span><br><span class="line">    <span class="comment">//设置要处理的事件类型</span></span><br><span class="line"></span><br><span class="line">    ev.events=EPOLLIN|EPOLLET;</span><br><span class="line">    <span class="comment">//ev.events=EPOLLIN;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//注册epoll事件</span></span><br><span class="line"></span><br><span class="line">    epoll_ctl(epfd,EPOLL_CTL_ADD,listenfd,&amp;ev);</span><br><span class="line">    bzero(&amp;serveraddr, <span class="keyword">sizeof</span>(serveraddr));</span><br><span class="line">    serveraddr.sin_family = AF_INET;</span><br><span class="line">    <span class="keyword">char</span> *local_addr=<span class="string">&quot;127.0.0.1&quot;</span>;</span><br><span class="line">    inet_aton(local_addr,&amp;(serveraddr.sin_addr));<span class="comment">//htons(portnumber);</span></span><br><span class="line"></span><br><span class="line">    serveraddr.sin_port=htons(portnumber);</span><br><span class="line">    bind(listenfd,(sockaddr *)&amp;serveraddr, <span class="keyword">sizeof</span>(serveraddr));</span><br><span class="line">    listen(listenfd, LISTENQ);</span><br><span class="line">    maxi = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> ( ; ; ) &#123;</span><br><span class="line">        <span class="comment">//等待epoll事件的发生</span></span><br><span class="line"></span><br><span class="line">        nfds=epoll_wait(epfd,events,<span class="number">20</span>,<span class="number">500</span>);</span><br><span class="line">        <span class="comment">//处理所发生的所有事件</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span>(i=<span class="number">0</span>;i&lt;nfds;++i)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(events[i].data.fd==listenfd)<span class="comment">//如果新监测到一个SOCKET用户连接到了绑定的SOCKET端口，建立新的连接。</span></span><br><span class="line"></span><br><span class="line">            &#123;</span><br><span class="line">                connfd = accept(listenfd,(sockaddr *)&amp;clientaddr, &amp;clilen);</span><br><span class="line">                <span class="keyword">if</span>(connfd&lt;<span class="number">0</span>)&#123;</span><br><span class="line">                    perror(<span class="string">&quot;connfd&lt;0&quot;</span>);</span><br><span class="line">                    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">//setnonblocking(connfd);</span></span><br><span class="line"></span><br><span class="line">                <span class="keyword">char</span> *str = inet_ntoa(clientaddr.sin_addr);</span><br><span class="line">                <span class="built_in">cout</span> &lt;&lt; <span class="string">&quot;accapt a connection from &quot;</span> &lt;&lt; str &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line">                <span class="comment">//设置用于读操作的文件描述符</span></span><br><span class="line"></span><br><span class="line">                ev.data.fd=connfd;</span><br><span class="line">                <span class="comment">//设置用于注测的读操作事件</span></span><br><span class="line"></span><br><span class="line">                ev.events=EPOLLIN|EPOLLET;</span><br><span class="line">                <span class="comment">//ev.events=EPOLLIN;</span></span><br><span class="line"></span><br><span class="line">                <span class="comment">//注册ev</span></span><br><span class="line"></span><br><span class="line">                epoll_ctl(epfd,EPOLL_CTL_ADD,connfd,&amp;ev);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>(events[i].events&amp;EPOLLIN)<span class="comment">//如果是已经连接的用户，并且收到数据，那么进行读入。</span></span><br><span class="line"></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="built_in">cout</span> &lt;&lt; <span class="string">&quot;EPOLLIN&quot;</span> &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line">                <span class="keyword">if</span> ( (sockfd = events[i].data.fd) &lt; <span class="number">0</span>)</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                <span class="keyword">if</span> ( (n = read(sockfd, line, MAXLINE)) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (errno == ECONNRESET) &#123;</span><br><span class="line">                        close(sockfd);</span><br><span class="line">                        events[i].data.fd = <span class="number">-1</span>;</span><br><span class="line">                    &#125; <span class="keyword">else</span></span><br><span class="line">                        <span class="built_in">std</span>::<span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;readline error&quot;</span>&lt;&lt;<span class="built_in">std</span>::<span class="built_in">endl</span>;</span><br><span class="line">                &#125; <span class="keyword">else</span> <span class="keyword">if</span> (n == <span class="number">0</span>) &#123;</span><br><span class="line">                    close(sockfd);</span><br><span class="line">                    events[i].data.fd = <span class="number">-1</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                line[n] = &#x27;/0&#x27;;</span><br><span class="line">                <span class="built_in">cout</span> &lt;&lt; <span class="string">&quot;read &quot;</span> &lt;&lt; line &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line">                <span class="comment">//设置用于写操作的文件描述符</span></span><br><span class="line"></span><br><span class="line">                ev.data.fd=sockfd;</span><br><span class="line">                <span class="comment">//设置用于注测的写操作事件</span></span><br><span class="line"></span><br><span class="line">                ev.events=EPOLLOUT|EPOLLET;</span><br><span class="line">                <span class="comment">//修改sockfd上要处理的事件为EPOLLOUT</span></span><br><span class="line"></span><br><span class="line">                <span class="comment">//epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&amp;ev);</span></span><br><span class="line"></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>(events[i].events&amp;EPOLLOUT) <span class="comment">// 如果有数据发送</span></span><br><span class="line"></span><br><span class="line">            &#123;</span><br><span class="line">                sockfd = events[i].data.fd;</span><br><span class="line">                write(sockfd, line, n);</span><br><span class="line">                <span class="comment">//设置用于读操作的文件描述符</span></span><br><span class="line"></span><br><span class="line">                ev.data.fd=sockfd;</span><br><span class="line">                <span class="comment">//设置用于注测的读操作事件</span></span><br><span class="line"></span><br><span class="line">                ev.events=EPOLLIN|EPOLLET;</span><br><span class="line">                <span class="comment">//修改sockfd上要处理的事件为EPOLIN</span></span><br><span class="line"></span><br><span class="line">                epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&amp;ev);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>Framework</category>
+      </categories>
+      <tags>
+        <tag>Framework</tag>
+        <tag>Andriod</tag>
+        <tag>epoll</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>init脚本说明文档分析</title>
+    <url>/2021/03/23/init%E8%84%9A%E6%9C%AC%E8%AF%B4%E6%98%8E%E6%96%87%E6%A1%A3%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h2 id="Android-Init-Language"><a href="#Android-Init-Language" class="headerlink" title="Android Init Language"></a>Android Init Language</h2><p>The Android Init Language consists of five broad classes of statements:<br>Actions, Commands, Services, Options, and Imports.</p>
+<p>All of these are line-oriented, consisting of tokens separated by<br>whitespace.  The c-style backslash escapes may be used to insert<br>whitespace into a token.  Double quotes may also be used to prevent<br>whitespace from breaking text into multiple tokens.  The backslash,<br>when it is the last character on a line, may be used for line-folding.</p>
+<p>Lines which start with a <code>#</code> (leading whitespace allowed) are comments.</p>
+<p>System properties can be expanded using the syntax<br><code>$&#123;property.name&#125;</code>. This also works in contexts where concatenation is<br>required, such as <code>import /init.recovery.$&#123;ro.hardware&#125;.rc</code>.</p>
+<p>Actions and Services implicitly declare a new section.  All commands<br>or options belong to the section most recently declared.  Commands<br>or options before the first section are ignored.</p>
+<p>Services have unique names.  If a second Service is defined<br>with the same name as an existing one, it is ignored and an error<br>message is logged.</p>
+<h2 id="Init-rc-Files"><a href="#Init-rc-Files" class="headerlink" title="Init .rc Files"></a>Init .rc Files</h2><p>The init language is used in plain text files that take the .rc file<br>extension.  There are typically multiple of these in multiple<br>locations on the system, described below.</p>
+<p>/init.rc is the primary .rc file and is loaded by the init executable<br>at the beginning of its execution.  It is responsible for the initial<br>set up of the system.</p>
+<p>Devices that mount /system, /vendor through the first stage mount mechanism<br>load all of the files contained within the<br>/{system,vendor,odm}/etc/init/ directories immediately after loading<br>the primary /init.rc.  This is explained in more details in the<br>Imports section of this file.</p>
+<p>Legacy devices without the first stage mount mechanism do the following:</p>
+<ol>
+<li>/init.rc imports /init.${ro.hardware}.rc which is the primary<br>vendor supplied .rc file.</li>
+<li>During the mount_all command, the init executable loads all of the<br>files contained within the /{system,vendor,odm}/etc/init/ directories.<br>These directories are intended for all Actions and Services used after<br>file system mounting.</li>
+</ol>
+<p>One may specify paths in the mount_all command line to have it import<br>.rc files at the specified paths instead of the default ones listed above.<br>This is primarily for supporting factory mode and other non-standard boot<br>modes.  The three default paths should be used for the normal boot process.</p>
+<p>The intention of these directories is:</p>
+<ol>
+<li>/system/etc/init/ is for core system items such as<br>SurfaceFlinger, MediaService, and logcatd.</li>
+<li>/vendor/etc/init/ is for SoC vendor items such as actions or<br>daemons needed for core SoC functionality.</li>
+<li>/odm/etc/init/ is for device manufacturer items such as<br>actions or daemons needed for motion sensor or other peripheral<br>functionality.</li>
+</ol>
+<p>All services whose binaries reside on the system, vendor, or odm<br>partitions should have their service entries placed into a<br>corresponding init .rc file, located in the /etc/init/<br>directory of the partition where they reside.  There is a build<br>system macro, LOCAL_INIT_RC, that handles this for developers.  Each<br>init .rc file should additionally contain any actions associated with<br>its service.</p>
+<p>An example is the logcatd.rc and Android.mk files located in the<br>system/core/logcat directory.  The LOCAL_INIT_RC macro in the<br>Android.mk file places logcatd.rc in /system/etc/init/ during the<br>build process.  Init loads logcatd.rc during the mount_all command and<br>allows the service to be run and the action to be queued when<br>appropriate.</p>
+<p>This break up of init .rc files according to their daemon is preferred<br>to the previously used monolithic init .rc files.  This approach<br>ensures that the only service entries that init reads and the only<br>actions that init performs correspond to services whose binaries are in<br>fact present on the file system, which was not the case with the<br>monolithic init .rc files.  This additionally will aid in merge<br>conflict resolution when multiple services are added to the system, as<br>each one will go into a separate file.</p>
+<p>There are two options “early” and “late” in mount_all command<br>which can be set after optional paths. With “–early” set, the<br>init executable will skip mounting entries with “latemount” flag<br>and triggering fs encryption state event. With “–late” set,<br>init executable will only mount entries with “latemount” flag but skip<br>importing rc files. By default, no option is set, and mount_all will<br>process all entries in the given fstab.</p>
+<h2 id="Actions"><a href="#Actions" class="headerlink" title="Actions"></a>Actions</h2><p>Actions are named sequences of commands.  Actions have a trigger which<br>is used to determine when the action is executed.  When an event<br>occurs which matches an action’s trigger, that action is added to<br>the tail of a to-be-executed queue (unless it is already on the<br>queue).</p>
+<p>Each action in the queue is dequeued in sequence and each command in<br>that action is executed in sequence.  Init handles other activities<br>(device creation/destruction, property setting, process restarting)<br>“between” the execution of the commands in activities.</p>
+<p>Actions take the form of:</p>
+<pre><code>on &lt;trigger&gt; [&amp;&amp; &lt;trigger&gt;]*
+   &lt;command&gt;
+   &lt;command&gt;
+   &lt;command&gt;
+</code></pre>
+<p>Actions are added to the queue and executed based on the order that<br>the file that contains them was parsed (see the Imports section), then<br>sequentially within an individual file.</p>
+<p>For example if a file contains:</p>
+<pre><code>on boot
+   setprop a 1
+   setprop b 2
+
+on boot &amp;&amp; property:true=true
+   setprop c 1
+   setprop d 2
+
+on boot
+   setprop e 1
+   setprop f 2
+</code></pre>
+<p>Then when the <code>boot</code> trigger occurs and assuming the property <code>true</code><br>equals <code>true</code>, then the order of the commands executed will be:</p>
+<pre><code>setprop a 1
+setprop b 2
+setprop c 1
+setprop d 2
+setprop e 1
+setprop f 2
+</code></pre>
+<h2 id="Services"><a href="#Services" class="headerlink" title="Services"></a>Services</h2><p>Services are programs which init launches and (optionally) restarts<br>when they exit.  Services take the form of:</p>
+<pre><code>service &lt;name&gt; &lt;pathname&gt; [ &lt;argument&gt; ]*
+   &lt;option&gt;
+   &lt;option&gt;
+   ...
+</code></pre>
+<h2 id="Options"><a href="#Options" class="headerlink" title="Options"></a>Options</h2><p>Options are modifiers to services.  They affect how and when init<br>runs the service.</p>
+<p><code>console [&lt;console&gt;]</code></p>
+<blockquote>
+<p>This service needs a console. The optional second parameter chooses a<br>  specific console instead of the default. The default “/dev/console” can<br>  be changed by setting the “androidboot.console” kernel parameter. In<br>  all cases the leading “/dev/“ should be omitted, so “/dev/tty0” would be<br>  specified as just “console tty0”.</p>
+</blockquote>
+<p><code>critical</code></p>
+<blockquote>
+<p>如果被该标签标记的服务在四分钟内启动四次，该设备将重启进入recovery模式</p>
+<p>  This is a device-critical service. If it exits more than four times in<br>  four minutes, the device will reboot into recovery mode.</p>
+</blockquote>
+<p><code>disabled</code></p>
+<blockquote>
+<p>如果该服务选项中没有disabled定义，则在init.rc中解析到这个服务的时候，会马上执行这个服务。而如果在服务的选项中增加了disabled定义，则该服务不会在init.rc中启动，需要我们在代码中使用以下方法来启动：property_set(“ctl.start”, “wifi_dhcpcd”);</p>
+</blockquote>
+<p>  This service will not automatically start with its class.<br>  It must be explicitly started by name.</p>
+<p><code>setenv &lt;name&gt; &lt;value&gt;</code></p>
+<blockquote>
+<p>在启动阶段设置环境变量</p>
+<p>Set the environment variable <em>name</em> to <em>value</em> in the launched process.</p>
+</blockquote>
+<p><code>socket &lt;name&gt; &lt;type&gt; &lt;perm&gt; [ &lt;user&gt; [ &lt;group&gt; [ &lt;seclabel&gt; ] ] ]</code></p>
+<blockquote>
+<p>声明socket会在启动之后再/dev/socket/name创建一个socket，再服务启动之后服务端可以绑定到这个socket上，等待客户端连接。</p>
+</blockquote>
+<p>  dgram： 使用不连续不可靠的数据包连接</p>
+<p>  stream： 提供面向连接的稳定数据传输，即TCP协议。</p>
+<p>  seqpacket: 提供连续可靠的数据包连接。</p>
+<p>  Create a unix domain socket named /dev/socket/<em>name</em> and pass its fd to the<br>  launched process.  <em>type</em> must be “dgram”, “stream” or “seqpacket”.  User and<br>  group default to 0.  ‘seclabel’ is the SELinux security context for the<br>  socket.  It defaults to the service security context, as specified by<br>  seclabel or computed based on the service executable file security context.<br>  For native executables see libcutils android_get_control_socket().</p>
+<p><code>enter_namespace &lt;type&gt; &lt;path&gt;</code></p>
+<blockquote>
+<p>Enters the namespace of type <em>type</em> located at <em>path</em>. Only network namespaces are supported with<br>  <em>type</em> set to “net”. Note that only one namespace of a given <em>type</em> may be entered.</p>
+</blockquote>
+<p><code>file &lt;path&gt; &lt;type&gt;</code></p>
+<blockquote>
+<p>Open a file path and pass its fd to the launched process. <em>type</em> must be<br>  “r”, “w” or “rw”.  For native executables see libcutils<br>  android_get_control_file().</p>
+</blockquote>
+<p><code>user &lt;username&gt;</code></p>
+<blockquote>
+<p>Change to ‘username’ before exec’ing this service.<br>  Currently defaults to root.  (??? probably should default to nobody)<br>  As of Android M, processes should use this option even if they<br>  require Linux capabilities.  Previously, to acquire Linux<br>  capabilities, a process would need to run as root, request the<br>  capabilities, then drop to its desired uid.  There is a new<br>  mechanism through fs_config that allows device manufacturers to add<br>  Linux capabilities to specific binaries on a file system that should<br>  be used instead. This mechanism is described on<br>  <a href="http://source.android.com/devices/tech/config/filesystem.html">http://source.android.com/devices/tech/config/filesystem.html</a>.  When<br>  using this new mechanism, processes can use the user option to<br>  select their desired uid without ever running as root.<br>  As of Android O, processes can also request capabilities directly in their .rc<br>  files. See the “capabilities” option below.</p>
+</blockquote>
+<p><code>group &lt;groupname&gt; [ &lt;groupname&gt;\* ]</code></p>
+<blockquote>
+<p>当执行此服务之后，设置用户组</p>
+</blockquote>
+<p>  Change to ‘groupname’ before exec’ing this service.  Additional<br>  groupnames beyond the (required) first one are used to set the<br>  supplemental groups of the process (via setgroups()).<br>  Currently defaults to root.  (??? probably should default to nobody)</p>
+<p><code>capabilities &lt;capability&gt; [ &lt;capability&gt;\* ]</code></p>
+<blockquote>
+<p>设置执行这个service需要什么能力，能力定义如下连接</p>
+</blockquote>
+<p>  Set capabilities when exec’ing this service. ‘capability’ should be a Linux<br>  capability without the “CAP_“ prefix, like “NET_ADMIN” or “SETPCAP”. See<br>  <a href="http://man7.org/linux/man-pages/man7/capabilities.7.html">http://man7.org/linux/man-pages/man7/capabilities.7.html</a> for a list of Linux<br>  capabilities.</p>
+<p><code>setrlimit &lt;resource&gt; &lt;cur&gt; &lt;max&gt;</code></p>
+<blockquote>
+<p>This applies the given rlimit to the service. rlimits are inherited by child<br>  processes, so this effectively applies the given rlimit to the process tree<br>  started by this service.<br>  It is parsed similarly to the setrlimit command specified below.</p>
+</blockquote>
+<p><code>seclabel &lt;seclabel&gt;</code></p>
+<blockquote>
+<p>Change to ‘seclabel’ before exec’ing this service.<br>  Primarily for use by services run from the rootfs, e.g. ueventd, adbd.<br>  Services on the system partition can instead use policy-defined transitions<br>  based on their file security context.<br>  If not specified and no transition is defined in policy, defaults to the init context.</p>
+</blockquote>
+<p><code>oneshot</code></p>
+<blockquote>
+<p>如果服务退出之后不重启</p>
+<p>Do not restart the service when it exits.</p>
+</blockquote>
+<p><code>class &lt;name&gt; [ &lt;name&gt;\* ]</code></p>
+<blockquote>
+<p>定义该服务数据哪一个类，这些服务可以通过该类型一起启动或者停止，如果没有定义class参数，被归为default类型</p>
+</blockquote>
+<p>  Specify class names for the service.  All services in a<br>  named class may be started or stopped together.  A service<br>  is in the class “default” if one is not specified via the<br>class option. Additional classnames beyond the (required) first</p>
+<blockquote>
+<p>one are used to group services.<br>  <code>animation class</code><br>  ‘animation’ class should include all services necessary for both<br>  boot animation and shutdown animation. As these services can be<br>  launched very early during bootup and can run until the last stage<br>  of shutdown, access to /data partition is not guaranteed. These<br>  services can check files under /data but it should not keep files opened<br>  and should work when /data is not available.</p>
+</blockquote>
+<p><code>onrestart</code></p>
+<blockquote>
+<p>当服务重启之后，需要执行那些命令 system/core/rootdir/init.zygote64_32.rc中，当zygote重启之后，需要重启哪些服务</p>
+<p>Execute a Command (see below) when service restarts.</p>
+</blockquote>
+<p><code>writepid &lt;file&gt; [ &lt;file&gt;\* ]</code></p>
+<blockquote>
+<p>Write the child’s pid to the given files when it forks. Meant for<br>  cgroup/cpuset usage. If no files under /dev/cpuset/ are specified, but the<br>  system property ‘ro.cpuset.default’ is set to a non-empty cpuset name (e.g.<br>  ‘/foreground’), then the pid is written to file /dev/cpuset/<em>cpuset_name</em>/tasks.</p>
+</blockquote>
+<p><code>priority &lt;priority&gt;</code></p>
+<blockquote>
+<p>Scheduling priority of the service process. This value has to be in range<br>  -20 to 19. Default priority is 0. Priority is set via setpriority().</p>
+</blockquote>
+<p><code>namespace &lt;pid|mnt&gt;</code></p>
+<blockquote>
+<p>Enter a new PID or mount namespace when forking the service.</p>
+</blockquote>
+<p><code>oom_score_adjust &lt;value&gt;</code></p>
+<blockquote>
+<p>给子进程设置oom_adj值</p>
+</blockquote>
+<p>  Sets the child’s /proc/self/oom_score_adj to the specified value,<br>  which must range from -1000 to 1000.</p>
+<p><code>memcg.swappiness &lt;value&gt;</code></p>
+<blockquote>
+<p>Sets the child’s memory.swappiness to the specified value (only if memcg is mounted),<br>  which must be equal or greater than 0.</p>
+</blockquote>
+<p><code>memcg.soft_limit_in_bytes &lt;value&gt;</code></p>
+<blockquote>
+<p>Sets the child’s memory.soft_limit_in_bytes to the specified value (only if memcg is mounted),<br>  which must be equal or greater than 0.</p>
+</blockquote>
+<p><code>memcg.limit_in_bytes &lt;value&gt;</code></p>
+<blockquote>
+<p>Sets the child’s memory.limit_in_bytes to the specified value (only if memcg is mounted),<br>  which must be equal or greater than 0.</p>
+</blockquote>
+<p><code>shutdown &lt;shutdown_behavior&gt;</code></p>
+<blockquote>
+<p>定义该service的退出行为，如果没有定义，会直接被SIGTERM and SIGKILL杀，如果有定义critical行为的服务，退出的时候不会被杀，除非退出超时了。被标有 “shutdown critical”的服务当退出的时候没有运行，该服务将被重启</p>
+</blockquote>
+<p>  Set shutdown behavior of the service process. When this is not specified,<br>  the service is killed during shutdown process by using SIGTERM and SIGKILL.<br>  The service with shutdown_behavior of “critical” is not killed during shutdown<br>  until shutdown times out. When shutdown times out, even services tagged with<br>  “shutdown critical” will be killed. When the service tagged with “shutdown critical”<br>  is not running when shut down starts, it will be started.</p>
+<h2 id="Triggers"><a href="#Triggers" class="headerlink" title="Triggers"></a>Triggers</h2><p>Triggers are strings which can be used to match certain kinds of<br>events and used to cause an action to occur.</p>
+<p>Triggers are subdivided into event triggers and property triggers.</p>
+<p>Event triggers are strings triggered by the ‘trigger’ command or by<br>the QueueEventTrigger() function within the init executable.  These<br>take the form of a simple string such as ‘boot’ or ‘late-init’.</p>
+<p>Property triggers are strings triggered when a named property changes<br>value to a given new value or when a named property changes value to<br>any new value.  <strong>These take the form of ‘property:<name>=<value>‘ and</value></name></strong><br><strong>‘property:<name>=*‘ respectively</name></strong>.  Property triggers are additionally<br>evaluated and triggered accordingly during the initial boot phase of<br>init.</p>
+<p>An Action can have multiple property triggers but may only have one<br>event trigger.</p>
+<p>For example:<br><code>on boot &amp;&amp; property:a=b</code> defines an action that is only executed when<br>the ‘boot’ event trigger happens and the property a equals b.</p>
+<p><code>on property:a=b &amp;&amp; property:c=d</code> defines an action that is executed<br>at three times:</p>
+<ol>
+<li>During initial boot if property a=b and property c=d.</li>
+<li>Any time that property a transitions to value b, while property c already equals d.</li>
+<li>Any time that property c transitions to value d, while property a already equals b.</li>
+</ol>
+<h2 id="Commands"><a href="#Commands" class="headerlink" title="Commands"></a>Commands</h2><p><code>bootchart [start|stop]</code></p>
+<blockquote>
+<p>Start/stop bootcharting. These are present in the default init.rc files,<br>  but bootcharting is only active if the file /data/bootchart/enabled exists;<br>  otherwise bootchart start/stop are no-ops.</p>
+</blockquote>
+<p><code>chmod &lt;octal-mode&gt; &lt;path&gt;</code></p>
+<blockquote>
+<p>Change file access permissions.</p>
+</blockquote>
+<p><code>chown &lt;owner&gt; &lt;group&gt; &lt;path&gt;</code></p>
+<blockquote>
+<p>Change file owner and group.</p>
+</blockquote>
+<p><code>class_start &lt;serviceclass&gt;</code></p>
+<blockquote>
+<p>启动serviceclass类的服务</p>
+</blockquote>
+<p>  Start all services of the specified class if they are<br>  not already running.  See the start entry for more information on<br>  starting services.</p>
+<p><code>class_stop &lt;serviceclass&gt;</code></p>
+<blockquote>
+<p>Stop and disable all services of the specified class if they are<br>  currently running.</p>
+</blockquote>
+<p><code>class_reset &lt;serviceclass&gt;</code></p>
+<blockquote>
+<p>Stop all services of the specified class if they are<br>  currently running, without disabling them. They can be restarted<br>  later using <code>class_start</code>.</p>
+</blockquote>
+<p><code>class_restart &lt;serviceclass&gt;</code></p>
+<blockquote>
+<p>Restarts all services of the specified class.</p>
+</blockquote>
+<p><code>copy &lt;src&gt; &lt;dst&gt;</code></p>
+<blockquote>
+<p>Copies a file. Similar to write, but useful for binary/large<br>  amounts of data.<br>  Regarding to the src file, copying from symbolic link file and world-writable<br>  or group-writable files are not allowed.<br>  Regarding to the dst file, the default mode created is 0600 if it does not<br>  exist. And it will be truncated if dst file is a normal regular file and<br>  already exists.</p>
+</blockquote>
+<p><code>domainname &lt;name&gt;</code></p>
+<blockquote>
+<p>Set the domain name.</p>
+</blockquote>
+<p><code>enable &lt;servicename&gt;</code></p>
+<blockquote>
+<p>Turns a disabled service into an enabled one as if the service did not<br>  specify disabled.<br>  If the service is supposed to be running, it will be started now.<br>  Typically used when the bootloader sets a variable that indicates a specific<br>  service should be started when needed. E.g.</p>
+</blockquote>
+<pre><code>on property:ro.boot.myfancyhardware=1
+    enable my_fancy_service_for_my_fancy_hardware
+</code></pre>
+<p><code>exec [ &lt;seclabel&gt; [ &lt;user&gt; [ &lt;group&gt;\* ] ] ] -- &lt;command&gt; [ &lt;argument&gt;\* ]</code></p>
+<blockquote>
+<p>Fork and execute command with the given arguments. The command starts<br>  after “–” so that an optional security context, user, and supplementary<br>  groups can be provided. No other commands will be run until this one<br>  finishes. <em>seclabel</em> can be a - to denote default. Properties are expanded<br>  within <em>argument</em>.<br>  Init halts executing commands until the forked process exits.</p>
+</blockquote>
+<p><code>exec_background [ &lt;seclabel&gt; [ &lt;user&gt; [ &lt;group&gt;\* ] ] ] -- &lt;command&gt; [ &lt;argument&gt;\* ]</code></p>
+<blockquote>
+<p>Fork and execute command with the given arguments. This is handled similarly<br>  to the <code>exec</code> command. The difference is that init does not halt executing<br>  commands until the process exits for <code>exec_background</code>.</p>
+</blockquote>
+<p><code>exec_start &lt;service&gt;</code></p>
+<blockquote>
+<p>Start a given service and halt the processing of additional init commands<br>  until it returns.  The command functions similarly to the <code>exec</code> command,<br>  but uses an existing service definition in place of the exec argument vector.</p>
+</blockquote>
+<p><code>export &lt;name&gt; &lt;value&gt;</code></p>
+<blockquote>
+<p>Set the environment variable <em>name</em> equal to <em>value</em> in the<br>  global environment (which will be inherited by all processes<br>  started after this command is executed)</p>
+</blockquote>
+<p><code>hostname &lt;name&gt;</code></p>
+<blockquote>
+<p>Set the host name.</p>
+</blockquote>
+<p><code>ifup &lt;interface&gt;</code></p>
+<blockquote>
+<p>Bring the network interface <em>interface</em> online.</p>
+</blockquote>
+<p><code>insmod [-f] &lt;path&gt; [&lt;options&gt;]</code></p>
+<blockquote>
+<p>加载驱动模块</p>
+</blockquote>
+<p>  Install the module at <em>path</em> with the specified options.<br>  -f: force installation of the module even if the version of the running kernel<br>  and the version of the kernel for which the module was compiled do not match.</p>
+<p><code>load_all_props</code></p>
+<blockquote>
+<p>Loads properties from /system, /vendor, et cetera.<br>  This is included in the default init.rc.</p>
+</blockquote>
+<p><code>load_persist_props</code></p>
+<blockquote>
+<p>当data分区解密之后加载persistent属性</p>
+</blockquote>
+<p>  Loads persistent properties when /data has been decrypted.<br>  This is included in the default init.rc.</p>
+<p><code>loglevel &lt;level&gt;</code></p>
+<blockquote>
+<p>Sets the kernel log level to level. Properties are expanded within <em>level</em>.</p>
+</blockquote>
+<p><code>mkdir &lt;path&gt; [mode] [owner] [group]</code></p>
+<blockquote>
+<p>Create a directory at <em>path</em>, optionally with the given mode, owner, and<br>  group. If not provided, the directory is created with permissions 755 and<br>  owned by the root user and root group. If provided, the mode, owner and group<br>  will be updated if the directory exists already.</p>
+</blockquote>
+<p><code>mount_all &lt;fstab&gt; [ &lt;path&gt; ]\* [--&lt;option&gt;]</code></p>
+<blockquote>
+<p>Calls fs_mgr_mount_all on the given fs_mgr-format fstab and imports .rc files<br>  at the specified paths (e.g., on the partitions just mounted) with optional<br>  options “early” and “late”.<br>  Refer to the section of “Init .rc Files” for detail.</p>
+</blockquote>
+<p><code>mount &lt;type&gt; &lt;device&gt; &lt;dir&gt; [ &lt;flag&gt;\* ] [&lt;options&gt;]</code></p>
+<blockquote>
+<p>Attempt to mount the named device at the directory <em>dir</em><br>  _flag_s include “ro”, “rw”, “remount”, “noatime”, …<br>  <em>options</em> include “barrier=1”, “noauto_da_alloc”, “discard”, … as<br>  a comma separated string, eg: barrier=1,noauto_da_alloc</p>
+</blockquote>
+<p><code>restart &lt;service&gt;</code></p>
+<blockquote>
+<p>Stops and restarts a running service, does nothing if the service is currently<br>  restarting, otherwise, it just starts the service.</p>
+</blockquote>
+<p><code>restorecon &lt;path&gt; [ &lt;path&gt;\* ]</code></p>
+<blockquote>
+<p>Restore the file named by <em>path</em> to the security context specified<br>  in the file_contexts configuration.<br>  Not required for directories created by the init.rc as these are<br>  automatically labeled correctly by init.</p>
+</blockquote>
+<p><code>restorecon_recursive &lt;path&gt; [ &lt;path&gt;\* ]</code></p>
+<blockquote>
+<p>Recursively restore the directory tree named by <em>path</em> to the<br>  security contexts specified in the file_contexts configuration.</p>
+</blockquote>
+<p><code>rm &lt;path&gt;</code></p>
+<blockquote>
+<p>Calls unlink(2) on the given path. You might want to<br>  use “exec – rm …” instead (provided the system partition is<br>  already mounted).</p>
+</blockquote>
+<p><code>rmdir &lt;path&gt;</code></p>
+<blockquote>
+<p>Calls rmdir(2) on the given path.</p>
+</blockquote>
+<p><code>readahead &lt;file|dir&gt; [--fully]</code></p>
+<blockquote>
+<p>Calls readahead(2) on the file or files within given directory.<br>  Use option –fully to read the full file content.</p>
+</blockquote>
+<p><code>setprop &lt;name&gt; &lt;value&gt;</code></p>
+<blockquote>
+<p>Set system property <em>name</em> to <em>value</em>. Properties are expanded<br>  within <em>value</em>.</p>
+</blockquote>
+<p><code>setrlimit &lt;resource&gt; &lt;cur&gt; &lt;max&gt;</code></p>
+<blockquote>
+<p>Set the rlimit for a resource. This applies to all processes launched after<br>  the limit is set. It is intended to be set early in init and applied globally.<br>  <em>resource</em> is best specified using its text representation (‘cpu’, ‘rtio’, etc<br>  or ‘RLIM_CPU’, ‘RLIM_RTIO’, etc). It also may be specified as the int value<br>  that the resource enum corresponds to.</p>
+</blockquote>
+<p><code>start &lt;service&gt;</code></p>
+<blockquote>
+<p>启动service，但是服务启动状态依赖于操作系统调度，无法保证服务的状态</p>
+</blockquote>
+<p>  Start a service running if it is not already running.<br>  Note that this is <em>not</em> synchronous, and even if it were, there is<br>  no guarantee that the operating system’s scheduler will execute the<br>  service sufficiently to guarantee anything about the service’s status.</p>
+<blockquote>
+<p>This creates an important consequence that if the service offers<br>  functionality to other services, such as providing a<br>  communication channel, simply starting this service before those<br>  services is <em>not</em> sufficient to guarantee that the channel has<br>  been set up before those services ask for it.  There must be a<br>  separate mechanism to make any such guarantees.</p>
+</blockquote>
+<p><code>stop &lt;service&gt;</code></p>
+<blockquote>
+<p>Stop a service from running if it is currently running.</p>
+</blockquote>
+<p><code>swapon_all &lt;fstab&gt;</code></p>
+<blockquote>
+<p>Calls fs_mgr_swapon_all on the given fstab file.</p>
+</blockquote>
+<p><code>symlink &lt;target&gt; &lt;path&gt;</code></p>
+<blockquote>
+<p>创建一个软连接</p>
+<p>Create a symbolic link at <em>path</em> with the value <em>target</em></p>
+</blockquote>
+<p><code>sysclktz &lt;mins_west_of_gmt&gt;</code></p>
+<blockquote>
+<p>设置时区</p>
+<p>Set the system clock base (0 if system clock ticks in GMT)</p>
+</blockquote>
+<p><code>trigger &lt;event&gt;</code></p>
+<blockquote>
+<p>Trigger an event.  Used to queue an action from another<br>  action.</p>
+</blockquote>
+<p><code>umount &lt;path&gt;</code></p>
+<blockquote>
+<p>Unmount the filesystem mounted at that path.</p>
+</blockquote>
+<p><code>verity_load_state</code></p>
+<blockquote>
+<p>Internal implementation detail used to load dm-verity state.</p>
+</blockquote>
+<p><code>verity_update_state &lt;mount-point&gt;</code></p>
+<blockquote>
+<p>Internal implementation detail used to update dm-verity state and<br>  set the partition.<em>mount-point</em>.verified properties used by adb remount<br>  because fs_mgr can’t set them directly itself.</p>
+</blockquote>
+<p><code>wait &lt;path&gt; [ &lt;timeout&gt; ]</code></p>
+<blockquote>
+<p>等待一个文件是否存在，当文件存在时立即返回，或到<timeout>指定的超时时间后返回，如果不指定<timeout>，默认超时时间是5秒</timeout></timeout></p>
+</blockquote>
+<p>  Poll for the existence of the given file and return when found,<br>  or the timeout has been reached. If timeout is not specified it<br>  currently defaults to five seconds.</p>
+<p><code>wait_for_prop &lt;name&gt; &lt;value&gt;</code></p>
+<blockquote>
+<p>等待name指定的属性被设置，如果被设置会立马执行下去</p>
+</blockquote>
+<p>  Wait for system property <em>name</em> to be <em>value</em>. Properties are expanded<br>  within <em>value</em>. If property <em>name</em> is already set to <em>value</em>, continue<br>  immediately.</p>
+<p><code>write &lt;path&gt; &lt;content&gt;</code></p>
+<blockquote>
+<p>Open the file at <em>path</em> and write a string to it with write(2).<br>  If the file does not exist, it will be created. If it does exist,<br>  it will be truncated. Properties are expanded within <em>content</em>.</p>
+</blockquote>
+<h2 id="Imports"><a href="#Imports" class="headerlink" title="Imports"></a>Imports</h2><p><code>import &lt;path&gt;</code></p>
+<blockquote>
+<p>引入扩展的配置文件，如果是一个目录，会解析这个目录下的所有rc文件，如果不是一个目录，不会递归解析子目录</p>
+</blockquote>
+<p>  Parse an init config file, extending the current configuration.<br>  If <em>path</em> is a directory, each file in the directory is parsed as<br>  a config file. It is not recursive, nested directories will<br>  not be parsed.</p>
+<p>The import keyword is not a command, but rather its own section,<br>meaning that it does not happen as part of an Action, but rather,<br>imports are handled as a file is being parsed and follow the below logic.</p>
+<p>There are only three times where the init executable imports .rc files:</p>
+<ol>
+<li>When it imports /init.rc or the script indicated by the property<br><code>ro.boot.init_rc</code> during initial boot.</li>
+<li>When it imports /{system,vendor,odm}/etc/init/ for first stage mount<br>devices immediately after importing /init.rc.</li>
+<li>When it imports /{system,vendor,odm}/etc/init/ or .rc files at specified<br>paths during mount_all.</li>
+</ol>
+<p>The order that files are imported is a bit complex for legacy reasons<br>and to keep backwards compatibility.  It is not strictly guaranteed.</p>
+<p>The only correct way to guarantee that a command has been run before a<br>different command is to either 1) place it in an Action with an<br>earlier executed trigger, or 2) place it in an Action with the same<br>trigger within the same file at an earlier line.</p>
+<p>Nonetheless, the defacto order for first stage mount devices is:</p>
+<ol>
+<li>/init.rc is parsed then recursively each of its imports are<br>parsed.</li>
+<li>The contents of /system/etc/init/ are alphabetized and parsed<br>sequentially, with imports happening recursively after each file is<br>parsed.</li>
+<li>Step 2 is repeated for /vendor/etc/init then /odm/etc/init</li>
+</ol>
+<p>The below pseudocode may explain this more clearly:</p>
+<pre><code>fn Import(file)
+  Parse(file)
+  for (import : file.imports)
+    Import(import)
+
+Import(/init.rc)
+Directories = [/system/etc/init, /vendor/etc/init, /odm/etc/init]
+for (directory : Directories)
+  files = &lt;Alphabetical order of directory&#39;s contents&gt;
+  for (file : files)
+    Import(file)
+</code></pre>
+<h2 id="Properties"><a href="#Properties" class="headerlink" title="Properties"></a>Properties</h2><p>Init provides information about the services that it is responsible<br>for via the below properties.</p>
+<p><code>init.svc.&lt;name&gt;</code></p>
+<blockquote>
+<p>State of a named service (“stopped”, “stopping”, “running”, “restarting”)</p>
+</blockquote>
+<h2 id="Boot-timing"><a href="#Boot-timing" class="headerlink" title="Boot timing"></a>Boot timing</h2><p>以下属性可以看到系统启动时序，[]中的时间戳单位是ns</p>
+<p>Init records some boot timing information in system properties.</p>
+<p><code>ro.boottime.init</code></p>
+<blockquote>
+<p>Time after boot in ns (via the CLOCK_BOOTTIME clock) at which the first<br>  stage of init started.</p>
+</blockquote>
+<p><code>ro.boottime.init.selinux</code></p>
+<blockquote>
+<p>How long it took the first stage to initialize SELinux.</p>
+</blockquote>
+<p><code>ro.boottime.init.cold_boot_wait</code></p>
+<blockquote>
+<p>How long init waited for ueventd’s coldboot phase to end.</p>
+</blockquote>
+<p><code>ro.boottime.&lt;service-name&gt;</code></p>
+<blockquote>
+<p>Time after boot in ns (via the CLOCK_BOOTTIME clock) that the service was<br>  first started.</p>
+</blockquote>
+<h2 id="Bootcharting"><a href="#Bootcharting" class="headerlink" title="Bootcharting"></a>Bootcharting</h2><p>This version of init contains code to perform “bootcharting”: generating log<br>files that can be later processed by the tools provided by <a href="http://www.bootchart.org/">http://www.bootchart.org/</a>.</p>
+<p>On the emulator, use the -bootchart <em>timeout</em> option to boot with bootcharting<br>activated for <em>timeout</em> seconds.</p>
+<p>On a device:</p>
+<pre><code>adb shell &#39;touch /data/bootchart/enabled&#39;
+</code></pre>
+<p>Don’t forget to delete this file when you’re done collecting data!</p>
+<p>The log files are written to /data/bootchart/. A script is provided to<br>retrieve them and create a bootchart.tgz file that can be used with the<br>bootchart command-line utility:</p>
+<pre><code>sudo apt-get install pybootchartgui
+# grab-bootchart.sh uses $ANDROID_SERIAL.
+$ANDROID_BUILD_TOP/system/core/init/grab-bootchart.sh
+</code></pre>
+<p>One thing to watch for is that the bootchart will show init as if it started<br>running at 0s. You’ll have to look at dmesg to work out when the kernel<br>actually started init.</p>
+<h2 id="Comparing-two-bootcharts"><a href="#Comparing-two-bootcharts" class="headerlink" title="Comparing two bootcharts"></a>Comparing two bootcharts</h2><p><code>compare-bootcharts.py</code>脚本可以比较指定进程的启动耗时对比。</p>
+<p>A handy script named <strong>compare-bootcharts.py</strong> can be used to compare the<br>start/end time of selected processes. The aforementioned <strong>grab-bootchart.sh</strong><br>will leave a bootchart tarball named bootchart.tgz at /tmp/android-bootchart.<br>If two such barballs are preserved on the host machine under different<br>directories, the script can list the timestamps differences. For example:</p>
+<p>Usage: <strong>system/core/init/compare-bootcharts.py <em>base-bootchart-dir</em> <em>exp-bootchart-dir</em></strong></p>
+<pre><code>process: baseline experiment (delta) - Unit is ms (a jiffy is 10 ms on the system)
+------------------------------------
+/init: 50 40 (-10)
+/system/bin/surfaceflinger: 4320 4470 (+150)
+/system/bin/bootanimation: 6980 6990 (+10)
+zygote64: 10410 10640 (+230)
+zygote: 10410 10640 (+230)
+system_server: 15350 15150 (-200)
+bootanimation ends at: 33790 31230 (-2560)
+</code></pre>
+<h2 id="Systrace"><a href="#Systrace" class="headerlink" title="Systrace"></a>Systrace</h2><p>systrace可以查看具体某个服务的启动耗时，示例如下</p>
+<p>Systrace (<a href="http://developer.android.com/tools/help/systrace.html">http://developer.android.com/tools/help/systrace.html</a>) can be<br>used for obtaining performance analysis reports during boot<br>time on userdebug or eng builds.</p>
+<p>Here is an example of trace events of “wm” and “am” categories:</p>
+<pre><code>$ANDROID_BUILD_TOP/external/chromium-trace/systrace.py \
+      wm am --boot
+</code></pre>
+<p>This command will cause the device to reboot. After the device is rebooted and<br>the boot sequence has finished, the trace report is obtained from the device<br>and written as trace.html on the host by hitting Ctrl+C.</p>
+<p>通过zygote fork出来的进程都可以使用以上方法来查看，但是vold,surfaceflinger等其在zygote之前的服务无法查看</p>
+<p>Limitation: recording trace events is started after persistent properties are loaded, so<br>the trace events that are emitted before that are not recorded. Several<br>services such as vold, surfaceflinger, and servicemanager are affected by this<br>limitation since they are started before persistent properties are loaded.<br>Zygote initialization and the processes that are forked from the zygote are not<br>affected.</p>
+<h2 id="Debugging-init"><a href="#Debugging-init" class="headerlink" title="Debugging init"></a>Debugging init</h2><p>By default, programs executed by init will drop stdout and stderr into<br>/dev/null. To help with debugging, you can execute your program via the<br>Android program logwrapper. This will redirect stdout/stderr into the<br>Android logging system (accessed via logcat).</p>
+<p>For example<br>service akmd /system/bin/logwrapper /sbin/akmd</p>
+<p>For quicker turnaround when working on init itself, use:</p>
+<pre><code>mm -j &amp;&amp;
+m ramdisk-nodeps &amp;&amp;
+m bootimage-nodeps &amp;&amp;
+adb reboot bootloader &amp;&amp;
+fastboot boot $ANDROID_PRODUCT_OUT/boot.img
+</code></pre>
+<p>Alternatively, use the emulator:</p>
+<pre><code>emulator -partition-size 1024 \
+    -verbose -show-kernel -no-window
+</code></pre>
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>Android</tag>
+        <tag>init</tag>
       </tags>
   </entry>
 </search>
