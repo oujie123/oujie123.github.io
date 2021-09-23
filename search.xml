@@ -7987,6 +7987,11 @@ fastboot boot $ANDROID_PRODUCT_OUT/boot.img
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cat /proc/pid/stack</span><br></pre></td></tr></table></figure>
 
 
+<h5 id="5-3-打印trace文件"><a href="#5-3-打印trace文件" class="headerlink" title="5.3 打印trace文件"></a>5.3 打印trace文件</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">adb shell</span><br><span class="line">echo 1 &gt; /d/tracing/tracing_on</span><br><span class="line">echo 1 &gt; /d/tracing/events/binder/enable</span><br><span class="line">cat /d/tracing/trace_pipe</span><br></pre></td></tr></table></figure>
+
+
+
+
 <p><strong>参考文档</strong></p>
 <ol>
 <li>《ndk_stack_log.txt》</li>
