@@ -1,0 +1,377 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Init.rc文件解析版 | 美丽的风景往往隐藏在道路的尽头</title><meta name="keywords" content="Init,Android"><meta name="author" content="Jack Ou"><meta name="copyright" content="Jack Ou"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="referrer" content="no-referrer"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="本文主要解析init.rc文件各个参数的意义，相当于工具文档。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Init.rc文件解析版">
+<meta property="og:url" content="https://oujie123.github.io/2020/07/28/InitRc%E8%A7%A3%E6%9E%90%E7%89%88/index.html">
+<meta property="og:site_name" content="美丽的风景往往隐藏在道路的尽头">
+<meta property="og:description" content="本文主要解析init.rc文件各个参数的意义，相当于工具文档。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/13838098-cb14d87e1b87a615.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="article:published_time" content="2020-07-28T08:55:52.000Z">
+<meta property="article:modified_time" content="2021-09-27T15:25:05.179Z">
+<meta property="article:author" content="Jack Ou">
+<meta property="article:tag" content="Android">
+<meta property="article:tag" content="Init">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/13838098-cb14d87e1b87a615.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="shortcut icon" href="https://upload-images.jianshu.io/upload_images/13838098-8a5cd66eafd7c761.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="canonical" href="https://oujie123.github.io/2020/07/28/InitRc%E8%A7%A3%E6%9E%90%E7%89%88/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":50,"languages":{"author":"作者: Jack Ou","link":"链接: ","source":"来源: 美丽的风景往往隐藏在道路的尽头","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: true,
+  islazyload: false,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}
+
+// https://stackoverflow.com/questions/16839698/jquery-getscript-alternative-in-native-javascript
+const getScript = url => new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.async = true
+  script.onerror = reject
+  script.onload = script.onreadystatechange = function() {
+    const loadState = this.readyState
+    if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+    script.onload = script.onreadystatechange = null
+    resolve()
+  }
+  document.head.appendChild(script)
+})</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2021-09-27 23:25:05'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><meta name="generator" content="Hexo 5.3.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">121</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">88</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">8</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-cb14d87e1b87a615.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">美丽的风景往往隐藏在道路的尽头</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">Init.rc文件解析版</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2020-07-28T08:55:52.000Z" title="发表于 2020-07-28 16:55:52">2020-07-28</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-09-27T15:25:05.179Z" title="更新于 2021-09-27 23:25:05">2021-09-27</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Android/">Android</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">3.5k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>11分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><blockquote>
+<h3 id="Android-Init-Language"><a href="#Android-Init-Language" class="headerlink" title="Android Init Language"></a>Android Init Language</h3><p>Android Init Language中由5类语法组成，分别是Actions, Commands, Services, Options, and Imports </p>
+<p> 每一行是一个语句，单词之间用空格分开，如果单词中有空格可以用反斜杠转义，也可以用双引号来引用文本避免和空格冲突，如果一行语句太长可以用 \ 换行，用 # 表示注释</p>
+<p> Actions和Services可以作为一个独立的Section,所有的Commands和Options从属于紧挨着的Actions或Services，定义在第一个Section前的Commands和Options将被忽略掉 </p>
+<p> Actions和Services都是唯一的，如果定义了两个一样的Action，第二个Action的Command将追加到第一个Action，<br> 如果定义了两个一样的Service，第二个Service将被忽略掉并打印错误日志</p>
+<h3 id="Init-rc-Files"><a href="#Init-rc-Files" class="headerlink" title="Init .rc Files"></a>Init .rc Files</h3><p>Android Init Language是用后缀为.rc的纯文本编写的,而且是由多个分布在不同目录下的.rc文件组成,如下所述 </p>
+<p> /init.rc 是最主要的一个.rc文件，它由init进程在初始化时加载，主要负责系统初始化,它会导入 /init.${ro.hardware}.rc ，这个是系统级核心厂商提供的主要.rc文件</p>
+<p> 当执行 mount_all 语句时，init进程将加载所有在 /{system,vendor,odm}/etc/init/ 目录下的文件，挂载好文件系统后，这些目录将会为Actions和Services服务</p>
+<p> 有一个特殊的目录可能被用来替换上面的三个默认目录，这主要是为了支持工厂模式和其他非标准的启动模式,上面三个目录用于正常的启动过程</p>
+<p> 这三个用于扩展的目录是</p>
+<ol>
+<li><p>/system/etc/init/ 用于系统本身，比如SurfaceFlinger, MediaService, and logcatd.</p>
+</li>
+<li><p>/vendor/etc/init/ 用于SoC(系统级核心厂商，如高通),为他们提供一些核心功能和服务</p>
+</li>
+<li><p>/odm/etc/init/ 用于设备制造商（odm定制厂商，如华为、小米），为他们的传感器或外围设备提供一些核心功能和服务</p>
+</li>
+</ol>
+<p>所有放在这三个目录下的Services二进制文件都必须有一个对应的.rc文件放在该目录下，并且要在.rc文件中定义service结构,<br> 有一个宏LOCAL_INIT_RC,可以帮助开发者处理这个问题. 每个.rc文件还应当包含一些与该服务相关的actions</p>
+<p> 举个例子，在system/core/logcat目录下有logcatd.rc和Android.mk这两个文件. Android.mk文件中用LOCAL_INIT_RC这个宏，在编译时将logcatd.rc放在/system/etc/init/目录下,init进程在调用 mount_all 时将其加载，在合适的时机运行其定义的service并将action放入队列</p>
+<p> 将init.rc根据不同服务分拆到不同目录，要比之前放在单个init.rc文件好. 这种方案确保init读取的service和action信息能和同目录下的Services二进制文件更加符合,不再像以前单个init.rc那样.<br> 另外，这样还可以解决多个services加入到系统时发生的冲突，因为他们都拆分到了不同的文件中</p>
+<p> 在 mount_all 语句中有 “early” 和 “late” 两个可选项，当 early 设置的时候，init进程将跳过被 latemount 标记的挂载操作，并触发fs encryption state 事件，<br> 当 late 被设置的时候，init进程只会执行 latemount 标记的挂载操作，但是会跳过导入的 .rc文件的执行. 默认情况下，不设置任何选项，init进程将执行所有挂载操作</p>
+<h3 id="Actions"><a href="#Actions" class="headerlink" title="Actions"></a>Actions</h3><p>Actions由一行行命令组成. trigger用来决定什么时候触发这些命令,当一个事件满足trigger的触发条件时，<br> 这个action就会被加入到处理队列中（除非队列中已经存在）</p>
+<p> 队列中的action按顺序取出执行，action中的命令按顺序执行. 这些命令主要用来执行一些操作（设备创建/销毁，属性设置，进程重启）</p>
+<p> Actions的格式如下：</p>
+</blockquote>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">on <span class="tag">&lt;<span class="name">trigger</span>&gt;</span> [&amp;&amp; <span class="tag">&lt;<span class="name">trigger</span>&gt;</span>]*</span><br><span class="line">   <span class="tag">&lt;<span class="name">command</span>&gt;</span></span><br><span class="line">   <span class="tag">&lt;<span class="name">command</span>&gt;</span></span><br><span class="line">   <span class="tag">&lt;<span class="name">command</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<blockquote>
+<h3 id="Services"><a href="#Services" class="headerlink" title="Services"></a>Services</h3><p>Services是init进程启动的程序,它们也可能在退出时自动重启. Services的格式如下：</p>
+</blockquote>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">service &lt;name&gt; &lt;pathname&gt; [ &lt;argument&gt; ]*</span><br><span class="line">   &lt;option&gt;</span><br><span class="line">   &lt;option&gt;</span><br><span class="line">   ...</span><br></pre></td></tr></table></figure>
+<blockquote>
+<h3 id="Options"><a href="#Options" class="headerlink" title="Options"></a>Options</h3><p>Options是Services的参数配置. 它们影响Service如何运行及运行时机</p>
+<p> console [<console>]</console></p>
+<p> Service需要控制台. 第二个参数console的意思是可以设置你想要的控制台类型，默认控制台是/dev/console ,/dev 这个前缀通常是被忽略的，比如你要设置控制台 /dev/tty0 ,那么只需要设置为console tty0</p>
+<p> critical</p>
+<p> 表示Service是严格模式. 如果这个Service在4分钟内退出超过4次，那么设备将重启进入recovery模式</p>
+<p> disabled</p>
+<p> 表示Service不能以class的形式启动，只能以name的形式启动</p>
+<p> setenv <name> <value></value></name></p>
+<p> 在Service启动时设置name-value的环境变量</p>
+<p> socket <name> <type> <perm> [ <user> [ <group> [ <seclabel> ] ] ]</seclabel></group></user></perm></type></name></p>
+<p> 创建一个unix域的socket,名字叫/dev/socket/name , 并将fd返回给Service. type 只能是 “dgram”, “stream” or “seqpacket”.<br> User 和 group 默认值是 0. ‘seclabel’ 是这个socket的SELinux安全上下文,它的默认值是service安全策略或者基于其可执行文件的安全上下文.<br> 它对应的本地实现在libcutils的android_get_control_socket</p>
+<p> file <path></path> <type></type></p>
+<p> 打开一个文件，并将fd返回给这个Service. type 只能是 “r”, “w” or “rw”. 它对应的本地实现在libcutils的android_get_control_file </p>
+<p> user <username></username></p>
+<p> 在启动Service前将user改为username,默认启动时user为root(或许默认是无).<br> 在Android M版本，如果一个进程想拥有Linux capabilities（相当于Android中的权限吧），也只能通过设置这个值. 以前，一个程序要想有Linux capabilities，必须先以root身份运行，然后再降级到所需的uid.<br> 现在已经有一套新的机制取而代之，它通过fs_config允许厂商赋予特殊二进制文件Linux capabilities. 这套机制的说明文档在<a target="_blank" rel="noopener" href="http://source.android.com/devices/tech/config/filesystem.html">http://source.android.com/devices/tech/config/filesystem.html</a>.<br> 当使用这套新的机制时，程序可以通过user参数选择自己所需的uid,而不需要以root权限运行. 在Android O版本，<br> 程序可以通过capabilities参数直接申请所需的能力，参见下面的capabilities说明</p>
+<p> group <groupname> [ <groupname>* ]</groupname></groupname></p>
+<p> 在启动Service前将group改为第一个groupname,第一个groupname是必须有的，<br> 默认值为root（或许默认值是无），第二个groupname可以不设置，用于追加组（通过setgroups）.</p>
+<p> capabilities <capability> [ <capability>* ]</capability></capability></p>
+<p> 在启动Service时将capabilities设置为capability. ‘capability’ 不能是”CAP_” prefix, like “NET_ADMIN” or “SETPCAP”. 参考<br> <a target="_blank" rel="noopener" href="http://man7.org/linux/man-pages/man7/capabilities.7.html">http://man7.org/linux/man-pages/man7/capabilities.7.html</a> ，里面有capability的说明.</p>
+<p> seclabel <seclabel></seclabel></p>
+<p> 在启动Service前将seclabel设置为seclabel. 主要用于在rootfs上启动的service，比如ueventd, adbd.<br> 在系统分区上运行的service有自己的SELinux安全策略，如果不设置，默认使用init的安全策略.</p>
+<p> oneshot</p>
+<p> 退出后不再重启</p>
+<p> class <name> [ <name>* ]</name></name></p>
+<p> 为Service指定class名字. 同一个class名字的Service会被一起启动或退出,默认值是”default”,第二个name可以不设置，用于service组.</p>
+<p> animation class</p>
+<p> animation class 主要包含为开机动画或关机动画服务的service. 它们很早被启动，而且直到关机最后一步才退出.<br> 它们不允许访问/data 目录，它们可以检查/data目录，但是不能打开 /data 目录，而且需要在 /data 不能用时也正常工作 .</p>
+<p> onrestart </p>
+<p> 在Service重启时执行命令.</p>
+<p> writepid <file> [ <file>* ]</file></file></p>
+<p> 当Service调用fork时将子进程的pid写入到指定文件. 用于cgroup/cpuset的使用，当/dev/cpuset/下面没有文件但ro.cpuset.default的值却不为空时,<br> 将pid的值写入到/dev/cpuset/cpuset_name/tasks文件中</p>
+<p> priority <priority></priority></p>
+<p> 设置进程优先级. 在-20～19之间，默认值是0,能过setpriority实现</p>
+<p> namespace &lt;pid|mnt&gt;</p>
+<p> 当fork这个service时，设置pid或mnt标记</p>
+<p> oom_score_adjust <value></value></p>
+<p> 设置子进程的 /proc/self/oom_score_adj 的值为 value,在 -1000 ～ 1000之间.</p>
+<h3 id="Triggers"><a href="#Triggers" class="headerlink" title="Triggers"></a>Triggers</h3><p>Triggers 是个字符串，当一些事件发生满足该条件时，一些actions就会被执行</p>
+<p> Triggers分为事件Trigger和属性Trigger</p>
+<p> 事件Trigger由trigger 命令或QueueEventTrigger方法触发.它的格式是个简单的字符串，比如’boot’ 或 ‘late-init’.</p>
+<p> 属性Trigger是在属性被设置或发生改变时触发. 格式是’property:<name>=<value>‘或’property:<name>=*’,它会在init初始化设置属性的时候触发.</name></value></name></p>
+<p> 属性Trigger定义的Action可能有多种触发方式，但是事件Trigger定义的Action可能只有一种触发方式</p>
+<p> 比如：</p>
+<p> on boot &amp;&amp; property:a=b 定义了action的触发条件是，boot Trigger触发，并且属性a的值等于b</p>
+<p> on property:a=b &amp;&amp; property:c=d 这个定义有三种触发方式:</p>
+<ol>
+<li>在初始化时，属性a=b,属性c=d.</li>
+<li>在属性c=d的情况下，属性a被改为b.</li>
+<li>A在属性a=b的情况下，属性c被改为d.</li>
+</ol>
+<h3 id="Commands"><a href="#Commands" class="headerlink" title="Commands"></a>Commands</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">bootchart [start|stop]</span><br></pre></td></tr></table></figure>
+
+<p> 启动或终止bootcharting. 这个出现在init.rc文件中，但是只有在/data/bootchart/enabled文件存在的时候才有效，否则不能工作</p>
+<p> chmod <octal-mode> <path></path></octal-mode></p>
+<p> 修改文件读写权限</p>
+<p> chown <owner> <group> <path></path></group></owner></p>
+<p> 修改文件所有者或所属用户组</p>
+<p> class_start <serviceclass></serviceclass></p>
+<p> 启动所有以serviceclass命名的未启动的service(service有一个name，也有个class，<br> 这里的serviceclass就是class,class_start和后面的start是两种启动方式，class_start是class形式启动，start是name形式启动)</p>
+<p> class_stop <serviceclass> </serviceclass></p>
+<p> 终止所有以serviceclass命名的正在运行的service</p>
+<p> class_reset <serviceclass></serviceclass></p>
+<p> 终止所有以serviceclass命名的正在运行的service,但是不禁用它们. 它们可以稍后被class_start重启</p>
+<p> class_restart <serviceclass></serviceclass></p>
+<p> 重启所有以serviceclass命名的service</p>
+<p> copy <src> <dst></dst></src></p>
+<p> 复制一个文件，与write相似，比较适合二进制或比较大的文件.</p>
+<p> 对于src,从链接文件、world-writable或group-writable复制是不允许的.</p>
+<p> 对于dst，如果目标文件不存在，则默认权限是0600,如果存在就覆盖掉</p>
+<p> domainname <name></name></p>
+<p> 设置域名</p>
+<p> enable <servicename></servicename></p>
+<p> 将一个禁用的service设置为可用.<br> 如果这个service在运行，那么就会重启.<br> 一般用在bootloader时设置属性，然后启动一个service，比如<br> on property:ro.boot.myfancyhardware=1<br> enable my_fancy_service_for_my_fancy_hardware<br> exec [ <seclabel> [ <user> [ <group>* ] ] ] – <command> [ <argument>* ]<br> 新建子进程并运行一个带指定参数的命令. 这个命令指定了seclabel（安全策略），user(所有者)，group(用户组).<br> 直到这个命令运行完才可以运行其他命令，seclabel可以设置为 - 表示用默认值，argument表示属性值.<br> 直到子进程新建完毕，init进程才继续执行.</argument></group></user></seclabel></p>
+<p> exec_start <service></service></p>
+<p> 启动一个service，只有当执行结果返回，init进程才能继续执行. 这个跟exec相似，只是将一堆参数的设置改在在service中定义</p>
+<p> export <name> <value></value></name></p>
+<p> 设置环境变量name-value. 这个环境变量将被所有已经启动的service继承</p>
+<p> hostname <name> </name></p>
+<p> 设置主机名</p>
+<p> ifup <interface></interface></p>
+<p> 开启指定的网络接口</p>
+<p> insmod [-f] <path></path> [<options>]</options></p>
+<p> 安装path下的模块，指定参数options.</p>
+<p> -f 表示强制安装，即便是当前Linux内核版本与之不匹配</p>
+<p> load_all_props</p>
+<p> 加载/system, /vendor等目录下的属性，这个用在init.rc中</p>
+<p> load_persist_props</p>
+<p> 加载/data 下的持久化属性. 这个用在init.rc中</p>
+<p> loglevel <level></level></p>
+<p> 设置日志输出等级，level表示等级</p>
+<p> mkdir <path></path> [mode] [owner] [group]</p>
+<p> 创建一个目录，path是路径，mode是读写权限，默认值是755,owner是所有者，默认值root,group是用户组,默认值是root.<br> 如果该目录已存在，则覆盖他们的mode,owner等设置</p>
+<p> mount_all <fstab> [ <path></path> ]* [–<option>]</option></fstab></p>
+<p> 当手动触发 “early” 和 “late”时，调用fs_mgr_mount_all 函数，指定fstab配置文件，并导入指定目录下的.rc文件<br> 详情可以查看init.rc文件中的有关定义</p>
+<p> mount <type> <device> <dir> [ <flag>* ] [<options>]</options></flag></dir></device></type></p>
+<p> 在dir目录下挂载一个名叫device的设备</p>
+<p> _flag 包括 “ro”, “rw”, “remount”, “noatime”, …</p>
+<p> options 包括 “barrier=1”, “noauto_da_alloc”, “discard”, … 用逗号分开，比如 barrier=1,noauto_da_alloc</p>
+<p> restart <service></service></p>
+<p> 终止后重启一个service,如果这个service刚被重启就什么都不做，如果没有在运行，就启动</p>
+<p> restorecon <path></path> [ <path></path>* ]</p>
+<p> 恢复指定目录下文件的安全上下文.第二个path是安全策略文件. 指定目录不需要必须存在，因为它只需要在init中正确标记</p>
+<p> restorecon_recursive <path></path> [ <path></path>* ]</p>
+<p> 递归地恢复指定目录下的安全上下文，第二个path是安全策略文件位置</p>
+<p> rm <path></path></p>
+<p> 调用 unlink(2)删除指定文件. 最好用exec – rm …代替，因为这样可以确保系统分区已经挂载好</p>
+<p> rmdir <path></path></p>
+<p> 调用 rmdir(2) 删除指定目录</p>
+<p> setprop <name> <value></value></name></p>
+<p> 设置属性name-value </p>
+<p> setrlimit <resource> <cur> <max></max></cur></resource></p>
+<p> 指定一个进程的资源限制</p>
+<p> start <service> </service></p>
+<p> 启动一个未运行的service</p>
+<p> stop <service></service></p>
+<p> 终止一个正在运行的service</p>
+<p> swapon_all <fstab></fstab></p>
+<p> 调用 fs_mgr_swapon_all，指定fstab配置文件.</p>
+<p> symlink <target> <path></path></target></p>
+<p> 在path下创建一个指向target的链接</p>
+<p> sysclktz <mins_west_of_gmt></mins_west_of_gmt></p>
+<p> 重置系统基准时间(如果是格林尼治标准时间则设置为0)</p>
+<p> trigger <event></event></p>
+<p> 触发事件event，由一个action触发到另一个action队列</p>
+<p> umount <path></path></p>
+<p> 卸载指定path的文件系统</p>
+<p> verity_load_state</p>
+<p> 内部实现是加载dm-verity的状态</p>
+<p> verity_update_state <mount-point></mount-point></p>
+<p> 内部实现是设置dm-verity的状态，并且设置partition.mount-point.verified的属性. 用于adb重新挂载，<br> 因为fs_mgr 不能直接设置它。 </p>
+<p> wait <path></path> [ <timeout> ]</timeout></p>
+<p> 查看指定路径是否存在. 如果发现则返回,可以设置超时时间，默认值是5秒</p>
+<p> wait_for_prop <name> <value></value></name></p>
+<p> 等待name属性的值被设置为value，如果name的值一旦被设置为value，马上继续</p>
+<p> write <path></path> <content></content></p>
+<p> 打开path下的文件，并用write(2)写入content内容. 如果文件不存在就会被创建，如果存在就会被覆盖掉</p>
+<h3 id="Imports"><a href="#Imports" class="headerlink" title="Imports"></a>Imports</h3><p>import关键字不是一个命令，但是如果有.rc文件包含它就会马上解析它里面的section,用法如下：</p>
+<p> import <path></path></p>
+<p> 解析path下的.rc文件 ，括展当前文件的配置。如果path是个目录，这个目录下所有.rc文件都被解析，但是不会递归,<br> import被用于以下两个地方：</p>
+<p> 1.在初始化时解析init.rc文件</p>
+<p> 2.在mount_all时解析{system,vendor,odm}/etc/init/等目录下的.rc文件</p>
+<p> 后面的内容主要是一些跟调试init进程相关的东西，比如init.svc.<name>可以查看service启动的状态，<br> ro.boottime.init记录一些关键的时间点，Bootcharting是一个图表化的性能监测工具等</name></p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/a511d8411a9b">Jack Ou</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/a511d8411a9b">https://www.jianshu.com/p/a511d8411a9b</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">此文章版权归Jack Ou所有，如有转载，请註明来自原作者</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Android/">Android</a><a class="post-meta__tags" href="/tags/Init/">Init</a></div><div class="post_share"><div class="social-share" data-image="https://upload-images.jianshu.io/upload_images/13838098-cb14d87e1b87a615.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" data-sites="wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏<div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="微信"/></a><div class="post-qr-code-desc">微信</div></li><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="支付宝"/></a><div class="post-qr-code-desc">支付宝</div></li></ul></div></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-full"><a href="/2020/09/16/%E9%AA%8C%E8%AF%81SSL-TLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81%E8%BF%87%E7%A8%8B%E5%8F%8A%E5%8E%9F%E7%90%86/"><img class="prev-cover" src="https://upload-images.jianshu.io/upload_images/13838098-49f52b19777b2d39.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">验证SSL/TLS双向认证过程及原理</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2021/08/30/生成bootchart-系统优化/" title="生成bootchart(系统优化)"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-08-30</div><div class="title">生成bootchart(系统优化)</div></div></a></div><div><a href="/2021/01/28/Android-IPC机制基础(一)/" title="Android IPC机制"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-523b1cf8b44c524c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-01-28</div><div class="title">Android IPC机制</div></div></a></div><div><a href="/2021/05/31/Android权限管理/" title="Android权限管理"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-ceb8ed2a66722632.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-05-31</div><div class="title">Android权限管理</div></div></a></div><div><a href="/2021/03/19/HIDL-demo实现详细步骤/" title="HIDL demo实现详细步骤"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-ceb8ed2a66722632.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-03-19</div><div class="title">HIDL demo实现详细步骤</div></div></a></div><div><a href="/2021/01/29/IPC机制-三-ContentProvider、Socket和Binder池/" title="IPC机制(三) -- ContentProvider、Socket和Binder池"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-1a87ca0aa39d75c2.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-01-29</div><div class="title">IPC机制(三) -- ContentProvider、Socket和Binder池</div></div></a></div><div><a href="/2021/01/28/IPC机制-二-Bundle-文件共享-Messager/" title="IPC机制(二) -- Bundle,文件共享,Messager"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-cb14d87e1b87a615.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-01-28</div><div class="title">IPC机制(二) -- Bundle,文件共享,Messager</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-info-avatar is-center"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">Jack Ou</div><div class="author-info__description">All things are difficult before they are easy</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">121</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">88</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">8</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200"><i class="fad fa-sheep"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/oujie123" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://www.jianshu.com/u/10058d760200" target="_blank" title="简书"><i class="fas fa-book-open"></i></a><a class="social-icon" href="https://blog.csdn.net/u010248147" target="_blank" title="CSDN"><i class="fab fa-microblog"></i></a><a class="social-icon" href="mailto:815669856@qq.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎收看我的博客，很高兴与您一同成长！</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Android-Init-Language"><span class="toc-number">1.</span> <span class="toc-text">Android Init Language</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Init-rc-Files"><span class="toc-number">2.</span> <span class="toc-text">Init .rc Files</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Actions"><span class="toc-number">3.</span> <span class="toc-text">Actions</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Services"><span class="toc-number">4.</span> <span class="toc-text">Services</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Options"><span class="toc-number">5.</span> <span class="toc-text">Options</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Triggers"><span class="toc-number">6.</span> <span class="toc-text">Triggers</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Commands"><span class="toc-number">7.</span> <span class="toc-text">Commands</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Imports"><span class="toc-number">8.</span> <span class="toc-text">Imports</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2021/09/28/%E4%BD%BF%E7%94%A8tcpdump%E9%87%87%E9%9B%86%E7%BD%91%E7%BB%9C%E8%AF%B7%E6%B1%82%EF%BC%8C%E4%BD%BF%E7%94%A8wireshark%E6%9F%A5%E7%9C%8B/" title="使用tcpdump采集网络请求，使用wireshark查看"><img src="https://upload-images.jianshu.io/upload_images/13838098-b688791bf19f1b61.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="使用tcpdump采集网络请求，使用wireshark查看"/></a><div class="content"><a class="title" href="/2021/09/28/%E4%BD%BF%E7%94%A8tcpdump%E9%87%87%E9%9B%86%E7%BD%91%E7%BB%9C%E8%AF%B7%E6%B1%82%EF%BC%8C%E4%BD%BF%E7%94%A8wireshark%E6%9F%A5%E7%9C%8B/" title="使用tcpdump采集网络请求，使用wireshark查看">使用tcpdump采集网络请求，使用wireshark查看</a><time datetime="2021-09-28T08:49:45.000Z" title="发表于 2021-09-28 16:49:45">2021-09-28</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/09/27/%E7%B3%BB%E7%BB%9F%E8%BF%9B%E7%A8%8B%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/" title="系统进程启动流程分析"><img src="https://upload-images.jianshu.io/upload_images/13838098-709a95ad43e716d4.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="系统进程启动流程分析"/></a><div class="content"><a class="title" href="/2021/09/27/%E7%B3%BB%E7%BB%9F%E8%BF%9B%E7%A8%8B%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/" title="系统进程启动流程分析">系统进程启动流程分析</a><time datetime="2021-09-27T15:35:00.000Z" title="发表于 2021-09-27 23:35:00">2021-09-27</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/09/25/Binder%E5%AD%90%E7%B3%BB%E7%BB%9F-%E6%B3%A8%E5%86%8C%E6%9C%8D%E5%8A%A1%E5%92%8C%E8%8E%B7%E5%8F%96%E6%9C%8D%E5%8A%A1%E7%AF%87/" title="Binder子系统-注册服务和获取服务篇"><img src="https://upload-images.jianshu.io/upload_images/13838098-68e128c62e879dbb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Binder子系统-注册服务和获取服务篇"/></a><div class="content"><a class="title" href="/2021/09/25/Binder%E5%AD%90%E7%B3%BB%E7%BB%9F-%E6%B3%A8%E5%86%8C%E6%9C%8D%E5%8A%A1%E5%92%8C%E8%8E%B7%E5%8F%96%E6%9C%8D%E5%8A%A1%E7%AF%87/" title="Binder子系统-注册服务和获取服务篇">Binder子系统-注册服务和获取服务篇</a><time datetime="2021-09-25T05:03:18.000Z" title="发表于 2021-09-25 13:03:18">2021-09-25</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/09/25/Binder%E5%AD%90%E7%B3%BB%E7%BB%9F-ServiceManager%E7%AF%87/" title="Binder子系统-ServiceManager篇"><img src="https://upload-images.jianshu.io/upload_images/13838098-68e128c62e879dbb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Binder子系统-ServiceManager篇"/></a><div class="content"><a class="title" href="/2021/09/25/Binder%E5%AD%90%E7%B3%BB%E7%BB%9F-ServiceManager%E7%AF%87/" title="Binder子系统-ServiceManager篇">Binder子系统-ServiceManager篇</a><time datetime="2021-09-24T16:29:17.000Z" title="发表于 2021-09-25 00:29:17">2021-09-25</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/09/22/Binder%E5%AD%90%E7%B3%BB%E7%BB%9F%E4%B9%8B%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90-%E4%BA%8C/" title="Binder子系统之调试分析(二)"><img src="https://upload-images.jianshu.io/upload_images/13838098-8b17e561a07be52d.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Binder子系统之调试分析(二)"/></a><div class="content"><a class="title" href="/2021/09/22/Binder%E5%AD%90%E7%B3%BB%E7%BB%9F%E4%B9%8B%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90-%E4%BA%8C/" title="Binder子系统之调试分析(二)">Binder子系统之调试分析(二)</a><time datetime="2021-09-21T16:31:06.000Z" title="发表于 2021-09-22 00:31:06">2021-09-22</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-cb14d87e1b87a615.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By Jack Ou</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi, welcome to my <a href="https://oujie123.github.io/">blog</a>!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><div class="search-dialog__title" id="local-search-title">本地搜索</div><div id="local-input-panel"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div></div><hr/><div id="local-search-results"></div><span class="search-close-button"><i class="fas fa-times"></i></span></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script>function panguFn () {
+  if (typeof pangu === 'object') pangu.spacingElementById('content-inner')
+  else {
+    getScript('https://cdn.jsdelivr.net/npm/pangu/dist/browser/pangu.min.js')
+      .then(() => {
+        pangu.spacingElementById('content-inner')
+      })
+  }
+}
+
+function panguInit () {
+  if (false){
+    GLOBAL_CONFIG_SITE.isPost && panguFn()
+  } else {
+    panguFn()
+  }
+}
+
+document.addEventListener('DOMContentLoaded', panguInit)</script><script src="/js/search/local-search.js"></script><script>var preloader = {
+  endLoading: () => {
+    document.body.style.overflow = 'auto';
+    document.getElementById('loading-box').classList.add("loaded")
+  },
+  initLoading: () => {
+    document.body.style.overflow = '';
+    document.getElementById('loading-box').classList.remove("loaded")
+
+  }
+}
+window.addEventListener('load',()=> {preloader.endLoading()})</script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="true" data-click="true"></script><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-fluttering-ribbon.min.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="99" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-nest.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/activate-power-mode.min.js"></script><script>POWERMODE.colorful = true;
+POWERMODE.shake = true;
+POWERMODE.mobile = true;
+document.body.addEventListener('input', POWERMODE);
+</script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-heart.min.js" async="async" mobile="true"></script><script id="click-show-text" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-show-text.min.js" data-mobile="true" data-text="I,LOVE,YOU" data-fontsize="15px" data-random="false" async="async"></script></div></body></html>
