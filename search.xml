@@ -9508,7 +9508,7 @@ fastboot boot $ANDROID_PRODUCT_OUT/boot.img
   <entry>
     <title>重温ActivityManagerService--应用启动流程分析</title>
     <url>/2021/10/11/%E9%87%8D%E6%B8%A9ActivityManagerService-%E5%BA%94%E7%94%A8%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/</url>
-    <content><![CDATA[<h4 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h4><p>前一篇文章重温了</p>
+    <content><![CDATA[<h4 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h4><p>前一篇文章重温了AMS，记录了AMS启动过程，与AMS交互的几个重要的类和数据结构。</p>
 ]]></content>
       <categories>
         <category>Framework</category>
