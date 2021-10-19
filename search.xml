@@ -9651,6 +9651,10 @@ fastboot boot $ANDROID_PRODUCT_OUT/boot.img
 <li>30.onCreate被调用，加载用户界面，已经对用户界面上的控件进行初始化。</li>
 </ul>
 <h5 id="3-6-说明"><a href="#3-6-说明" class="headerlink" title="3.6 说明"></a>3.6 说明</h5><p>如果子activity设置了android：process属性为另一个进程，启动过程跟MainActivity启动一样，只是不用再新建一个task了，因为子activity的android:taskAffinity和MAinActivity是一样的，MainActivity已经新创建了一个task，可以在同一个task中进程。</p>
+<h4 id="4-Android-O方法调用栈"><a href="#4-Android-O方法调用栈" class="headerlink" title="4.Android O方法调用栈"></a>4.Android O方法调用栈</h4><h5 id="4-1-Launcher请求AMS阶段"><a href="#4-1-Launcher请求AMS阶段" class="headerlink" title="4.1 Launcher请求AMS阶段"></a>4.1 Launcher请求AMS阶段</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-f1181020bb236b9d.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Launcher2Ams_startactivity.png"></p>
+<h5 id="4-2-AMS到ApplicationThread阶段"><a href="#4-2-AMS到ApplicationThread阶段" class="headerlink" title="4.2 AMS到ApplicationThread阶段"></a>4.2 AMS到ApplicationThread阶段</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-3ee22e7d5386aebd.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Ams2ApplicationThread.png"></p>
+<h5 id="4-3-ApplicationThread到Activity阶段"><a href="#4-3-ApplicationThread到Activity阶段" class="headerlink" title="4.3 ApplicationThread到Activity阶段"></a>4.3 ApplicationThread到Activity阶段</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-4422a7056225da71.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="ApplicationThread2Activity.png"></p>
+<h5 id="4-4-SDK-28之后，AMS启动Activity"><a href="#4-4-SDK-28之后，AMS启动Activity" class="headerlink" title="4.4 SDK 28之后，AMS启动Activity"></a>4.4 SDK 28之后，AMS启动Activity</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-cf5618e677794e8d.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="ApplicationThread2ActivityAfter28.png"></p>
 ]]></content>
       <categories>
         <category>Framework</category>
@@ -9938,9 +9942,28 @@ fastboot boot $ANDROID_PRODUCT_OUT/boot.img
 <li>AppBlockMonitor :主要监控应用主线程处理事件是否超时，超时会打印堆栈。</li>
 </ul>
 <h4 id="2-UiBlockMonitor-使用介绍"><a href="#2-UiBlockMonitor-使用介绍" class="headerlink" title="2.UiBlockMonitor 使用介绍"></a>2.UiBlockMonitor 使用介绍</h4><p>该工具主要基于Choreographer的帧回调接口实现的。当收到垂直同步信号，开始绘制的时候就会回调doFrame()接口，在回调中监控到两次回调间隔时间大于16.7ms就说明有丢帧，就会输出一次日志通知开发检查自己界面各个view的绘制时间。</p>
-<p><img src="/2021/09/27/%E5%8D%A1%E9%A1%BF%E7%9B%91%E6%8E%A7%E5%B7%A5%E5%85%B7%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/blog\source_posts\卡顿监控工具使用说明\丢帧日志.png" alt="丢帧日志"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-7b58e308c7d22d71.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="丢帧日志.png"></p>
 <p><strong>说明：</strong>如果偶尔发现有该日志输出，可以暂时不优化。如果在界面切换的时候或者一直在输出该丢帧log，就需要查看自己代码是否在三大绘制流程中有做过多耗时操作。</p>
-<h5 id="2-1-使用方法"><a href="#2-1-使用方法" class="headerlink" title="2.1 使用方法"></a>2.1 使用方法</h5>]]></content>
+<h5 id="2-1-使用方法"><a href="#2-1-使用方法" class="headerlink" title="2.1 使用方法"></a>2.1 使用方法</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 开始监控丢帧</span></span><br><span class="line">UiBlockMonitor.getInstance().start();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 结束监控丢帧</span></span><br><span class="line">UiBlockMonitor.getInstance().stop();</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="3-AppBlockMonitor"><a href="#3-AppBlockMonitor" class="headerlink" title="3.AppBlockMonitor"></a>3.AppBlockMonitor</h4><p>该工具主要基于Handler消息处理机制，监控消息处理大于阈值的事件。默认是3000ms,可以设置该时间，建议不要操作3000ms, 如果设置成5000ms，可能就无法帮助你监控ANR事件或者应用卡顿了。</p>
+<p>如果出现卡顿之后，会报出堆栈日志，此时就需要FO检查代码问题了。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-ab7e9166242a8938.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="应用卡顿.png"></p>
+<h5 id="3-1-使用方法"><a href="#3-1-使用方法" class="headerlink" title="3.1 使用方法"></a>3.1 使用方法</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">AppBlockMonitor appMonitor = AppBlockMonitor.getInstance();</span><br><span class="line">appMonitor.setBlockThresholdMillis(<span class="number">3000</span>); <span class="comment">// 可以不填，默认3000ms</span></span><br><span class="line">appMonitor.install();</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+
+
+
+
+]]></content>
       <categories>
         <category>Android</category>
       </categories>
@@ -10092,6 +10115,546 @@ fastboot boot $ANDROID_PRODUCT_OUT/boot.img
       <tags>
         <tag>Android</tag>
         <tag>系统优化</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Systrace使用说明以及使用场景总结</title>
+    <url>/2021/10/15/Systrace%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E%E4%BB%A5%E5%8F%8A%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF%E6%80%BB%E7%BB%93/</url>
+    <content><![CDATA[<h4 id="1-使用说明"><a href="#1-使用说明" class="headerlink" title="1.使用说明"></a>1.使用说明</h4><h5 id="1-1-命令用法"><a href="#1-1-命令用法" class="headerlink" title="1.1 命令用法"></a>1.1 命令用法</h5><p><strong>命令行</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">python systrace.py [options] [category1] [category2] ... [categoryN]</span><br></pre></td></tr></table></figure>
+
+
+<h5 id="1-2-options"><a href="#1-2-options" class="headerlink" title="1.2 options"></a>1.2 options</h5><p>其中options可取值：</p>
+<table>
+<thead>
+<tr>
+<th align="left">options</th>
+<th align="left">解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">-o <code>&lt;FILE</code>&gt;</td>
+<td align="left">输出的目标文件</td>
+</tr>
+<tr>
+<td align="left">-t N, –time=N</td>
+<td align="left">执行时间，默认5s</td>
+</tr>
+<tr>
+<td align="left">-b N, –buf-size=N</td>
+<td align="left">buffer大小（单位kB),用于限制trace总大小，默认无上限</td>
+</tr>
+<tr>
+<td align="left">-k <code>&lt;KFUNCS</code>&gt;，–ktrace=<code>&lt;KFUNCS</code>&gt;</td>
+<td align="left">追踪kernel函数，用逗号分隔</td>
+</tr>
+<tr>
+<td align="left">-a <code>&lt;APP_NAME</code>&gt;,–app=<code>&lt;APP_NAME</code>&gt;</td>
+<td align="left">追踪应用包名，用逗号分隔</td>
+</tr>
+<tr>
+<td align="left">–from-file=<code>&lt;FROM_FILE</code>&gt;</td>
+<td align="left">从文件中创建互动的systrace</td>
+</tr>
+<tr>
+<td align="left">-e <code>&lt;DEVICE_SERIAL</code>&gt;,–serial=<code>&lt;DEVICE_SERIAL</code>&gt;</td>
+<td align="left">指定设备</td>
+</tr>
+<tr>
+<td align="left">-l, –list-categories</td>
+<td align="left">列举可用的tags</td>
+</tr>
+</tbody></table>
+<h5 id="1-3-category"><a href="#1-3-category" class="headerlink" title="1.3 category"></a>1.3 category</h5><p>category可取值：</p>
+<table>
+<thead>
+<tr>
+<th align="left">category</th>
+<th align="left">解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">gfx</td>
+<td align="left">Graphics</td>
+</tr>
+<tr>
+<td align="left">input</td>
+<td align="left">Input</td>
+</tr>
+<tr>
+<td align="left">view</td>
+<td align="left">View System</td>
+</tr>
+<tr>
+<td align="left">webview</td>
+<td align="left">WebView</td>
+</tr>
+<tr>
+<td align="left">wm</td>
+<td align="left">Window Manager</td>
+</tr>
+<tr>
+<td align="left">am</td>
+<td align="left">Activity Manager</td>
+</tr>
+<tr>
+<td align="left">sm</td>
+<td align="left">Sync Manager</td>
+</tr>
+<tr>
+<td align="left">audio</td>
+<td align="left">Audio</td>
+</tr>
+<tr>
+<td align="left">video</td>
+<td align="left">Video</td>
+</tr>
+<tr>
+<td align="left">camera</td>
+<td align="left">Camera</td>
+</tr>
+<tr>
+<td align="left">hal</td>
+<td align="left">Hardware Modules</td>
+</tr>
+<tr>
+<td align="left">app</td>
+<td align="left">Application</td>
+</tr>
+<tr>
+<td align="left">res</td>
+<td align="left">Resource Loading</td>
+</tr>
+<tr>
+<td align="left">dalvik</td>
+<td align="left">Dalvik VM</td>
+</tr>
+<tr>
+<td align="left">rs</td>
+<td align="left">RenderScript</td>
+</tr>
+<tr>
+<td align="left">bionic</td>
+<td align="left">Bionic C Library</td>
+</tr>
+<tr>
+<td align="left">power</td>
+<td align="left">Power Management</td>
+</tr>
+<tr>
+<td align="left">sched</td>
+<td align="left">CPU Scheduling</td>
+</tr>
+<tr>
+<td align="left">irq</td>
+<td align="left">IRQ Events</td>
+</tr>
+<tr>
+<td align="left">freq</td>
+<td align="left">CPU Frequency</td>
+</tr>
+<tr>
+<td align="left">idle</td>
+<td align="left">CPU Idle</td>
+</tr>
+<tr>
+<td align="left">disk</td>
+<td align="left">Disk I/O</td>
+</tr>
+<tr>
+<td align="left">mmc</td>
+<td align="left">eMMC commands</td>
+</tr>
+<tr>
+<td align="left">load</td>
+<td align="left">CPU Load</td>
+</tr>
+<tr>
+<td align="left">sync</td>
+<td align="left">Synchronization</td>
+</tr>
+<tr>
+<td align="left">workq</td>
+<td align="left">Kernel Workqueues</td>
+</tr>
+<tr>
+<td align="left">memreclaim</td>
+<td align="left">Kernel Memory Reclaim</td>
+</tr>
+<tr>
+<td align="left">regulators</td>
+<td align="left">Voltage and Current Regulators</td>
+</tr>
+</tbody></table>
+<h5 id="1-4-示例"><a href="#1-4-示例" class="headerlink" title="1.4 示例"></a>1.4 示例</h5><p>例如，在<code>systrace.py</code>所在目录下执行指令：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">python systrace.py -b 32768 -t 5 -o mytrace.html wm gfx input view sched freq</span><br><span class="line">.&#x2F;systrace.py -b 32768 -t 5 -o mytrace.html wm gfx input view sched freq &#x2F;&#x2F;等价</span><br></pre></td></tr></table></figure>
+<p>又例如，输出全部的trace信息</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">python systrace.py -b 32768 -t 5 -o mytrace.html gfx input view webview wm am sm audio video camera hal app res dalvik rs bionic power sched irq freq idle disk mmc load sync workq memreclaim regulators</span><br></pre></td></tr></table></figure>
+<p><strong>注：</strong>收集trace，需要提前安装python，并且一定要注意必须是python 2.x，而不是能3.x，否则可能会出现问题。另外，buffer大小不可过大，否则会出现oom异常。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-9643489773d6e190.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="python3_8不支持.png"></p>
+<p>出现这种情况可以安装3.8和2.7的两个版本，然后再环境变量中将2.7的目录放在3.8之前，重启cmd运行即可。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-d69496c765f7ea9b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="调整python启动版本.png"></p>
+<h4 id="2-图形说明"><a href="#2-图形说明" class="headerlink" title="2.图形说明"></a>2.图形说明</h4><h5 id="2-1-图形化"><a href="#2-1-图形化" class="headerlink" title="2.1 图形化"></a>2.1 图形化</h5><p>横坐标是以时间为单位，纵坐标是以进程-线程的方式来划分，同一进程的线程为一组放在一起，可收缩/展开，如下图：</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-8dceb8f1905165f4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="图形化.png"></p>
+<h5 id="2-2-Frames"><a href="#2-2-Frames" class="headerlink" title="2.2 Frames"></a>2.2 Frames</h5><p>产生的html格式的trace文件必须使用Google Chrome打开，才能正确地解析并已图标形式展现。上图中红色圈起来的，都是可以点击操作的地方，最上方是搜索栏，往下处是Alerts按钮，再往下是鼠标操作模式。</p>
+<p>在每个app进程，都有一个Frames行，正常情况以绿色的圆点表示。当圆点颜色为黄色或者红色时，意味着这一帧超过16.6ms（即发现丢帧），这时需要通过放大那一帧进一步分析问题。对于Android 5.0(API level 21)或者更高的设备，该问题主要聚焦在UI Thread和Render Thread这两个线程当中。对于更早的版本，则所有工作在UI Thread。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-9228693a57d2ac0f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="frame图.png"></p>
+<h5 id="2-3-Alerts"><a href="#2-3-Alerts" class="headerlink" title="2.3 Alerts"></a>2.3 Alerts</h5><p>Systrace能自动分析trace中的事件，并能自动高亮性能问题作为一个Alerts，建议调试人员下一步该怎么做。</p>
+<p>比如对于丢帧是，点击黄色或红色的Frames圆点便会有相关的提示信息；另外，在systrace的最右上方，有一个Alerts tab可以展开，这里记录着所有的的警告提示信息。</p>
+<p><strong>注：</strong>本文讲到最新版的systrace，其中sdk 23，chrome版本49.0，部分功能在老版本systrace并没有。</p>
+<h4 id="3-快捷操作"><a href="#3-快捷操作" class="headerlink" title="3. 快捷操作"></a>3. 快捷操作</h4><h5 id="3-1-导航操作"><a href="#3-1-导航操作" class="headerlink" title="3.1 导航操作"></a>3.1 导航操作</h5><table>
+<thead>
+<tr>
+<th align="left">导航操作</th>
+<th align="left">作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">w</td>
+<td align="left">放大，[+shift]速度更快</td>
+</tr>
+<tr>
+<td align="left">s</td>
+<td align="left">缩小，[+shift]速度更快</td>
+</tr>
+<tr>
+<td align="left">a</td>
+<td align="left">左移，[+shift]速度更快</td>
+</tr>
+<tr>
+<td align="left">d</td>
+<td align="left">右移，[+shift]速度更快</td>
+</tr>
+</tbody></table>
+<h5 id="3-2-快捷操作"><a href="#3-2-快捷操作" class="headerlink" title="3.2 快捷操作"></a>3.2 快捷操作</h5><table>
+<thead>
+<tr>
+<th align="left">常用操作</th>
+<th align="left">作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">f</td>
+<td align="left"><strong>放大</strong>当前选定区域</td>
+</tr>
+<tr>
+<td align="left">m</td>
+<td align="left"><strong>标记</strong>当前选定区域</td>
+</tr>
+<tr>
+<td align="left">v</td>
+<td align="left">高亮<strong>VSync</strong></td>
+</tr>
+<tr>
+<td align="left">g</td>
+<td align="left">切换是否显示<strong>60hz</strong>的网格线</td>
+</tr>
+<tr>
+<td align="left">0</td>
+<td align="left">恢复trace到<strong>初始态</strong>，这里是数字0而非字母o</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th align="left">一般操作</th>
+<th align="left">作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">h</td>
+<td align="left">切换是否显示详情</td>
+</tr>
+<tr>
+<td align="left">/</td>
+<td align="left">搜索关键字</td>
+</tr>
+<tr>
+<td align="left">enter</td>
+<td align="left">显示搜索结果，可通过← →定位搜索结果</td>
+</tr>
+<tr>
+<td align="left">`</td>
+<td align="left">显示/隐藏脚本控制台</td>
+</tr>
+<tr>
+<td align="left">?</td>
+<td align="left">显示帮助功能</td>
+</tr>
+</tbody></table>
+<p>对于脚本控制台，除了能当做记事本的功能，目前还不清楚有啥功能，或许还在开发中。</p>
+<h5 id="3-3-模式切换"><a href="#3-3-模式切换" class="headerlink" title="3.3 模式切换"></a>3.3 模式切换</h5><ol>
+<li>Select mode: <strong>双击已选定区</strong>能将所有相同的块高亮选中；（对应数字1）</li>
+<li>Pan mode: 拖动平移视图（对应数字2）</li>
+<li>Zoom mode:通过上/下拖动鼠标来实现放大/缩小功能；（对应数字3）</li>
+<li>Timing mode:拖动来创建或移除时间窗口线。（对应数字4）</li>
+</ol>
+<p>可通过按数字1~4，用于切换鼠标模式； 另外，按住alt键，再滚动鼠标滚轮能实现放大/缩小功能。</p>
+<h4 id="4-使用AndroidStudio调查卡顿"><a href="#4-使用AndroidStudio调查卡顿" class="headerlink" title="4.使用AndroidStudio调查卡顿"></a>4.使用AndroidStudio调查卡顿</h4><h5 id="4-1-选择Trace-System-Call选项采集系统调用"><a href="#4-1-选择Trace-System-Call选项采集系统调用" class="headerlink" title="4.1 选择Trace System Call选项采集系统调用"></a>4.1 选择<code>Trace System Call</code>选项采集系统调用</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-ccbcc510db50e514.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="选择TraceSystemCall.png"></p>
+<h5 id="4-2-查看调用栈"><a href="#4-2-查看调用栈" class="headerlink" title="4.2 查看调用栈"></a>4.2 查看调用栈</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-70f6f4aa992ac1ae.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="查看调用栈.png"></p>
+<h4 id="5-总结"><a href="#5-总结" class="headerlink" title="5.总结"></a>5.总结</h4><h5 id="5-1-分析卡顿有用的信息"><a href="#5-1-分析卡顿有用的信息" class="headerlink" title="5.1 分析卡顿有用的信息"></a>5.1 分析卡顿有用的信息</h5><p><code>sched</code>: CPU调度的信息，非常重要；你能看到CPU在每个时间段在运行什么线程；线程调度情况，比如锁信息。<br><code>gfx</code>：Graphic系统的相关信息，包括SerfaceFlinger，VSYNC消息，Texture，RenderThread等；分析卡顿非常依赖这个。<br><code>view</code>: View绘制系统的相关信息，比如onMeasure，onLayout等；对分析卡顿比较有帮助。<br><code>am</code>：ActivityManager调用的相关信息；用来分析Activity的启动过程比较有效。</p>
+<h5 id="5-2-指令"><a href="#5-2-指令" class="headerlink" title="5.2 指令"></a>5.2 指令</h5><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">systrace.py -t 10 -o d:&#x2F;mytrace.html sched gfx view am -a com.example.myapplication</span><br></pre></td></tr></table></figure>
+
+
+<h5 id="5-3-不同category使用场景"><a href="#5-3-不同category使用场景" class="headerlink" title="5.3 不同category使用场景"></a>5.3 不同category使用场景</h5><blockquote>
+<ol>
+<li><p>测试列表滑动， 桌面滑动等流畅性问题<br>gfx input view</p>
+</li>
+<li><p>若在上面的基础上 还需要分析HWUI<br>gfx input view hwui  </p>
+</li>
+<li><p>测试app启动或者进入某个界面的速度<br>gfx input view am  wm res</p>
+</li>
+<li><p>怀疑有GC或者是IO导致的卡顿<br>gfx input view dalvik disk </p>
+</li>
+<li><p>怀疑有power相关的问题<br>gfx input view res am wm power</p>
+</li>
+</ol>
+</blockquote>
+<h5 id="5-4-分析卡顿原因"><a href="#5-4-分析卡顿原因" class="headerlink" title="5.4 分析卡顿原因"></a>5.4 分析卡顿原因</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-dfd273696742224a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="当前系统线程状态判断卡顿原因.png"></p>
+<p>点击frame图，查看线程状态推断卡顿原因，不同颜色代表不同线程状态：</p>
+<ul>
+<li><p>绿色：运行中<br>作用： 查看Running状态的线程，查看其运行的时间，与竞品做对比，分析快或者慢的原因是否频率不够，问题可能性：</p>
+<ul>
+<li><p>是否跑在了小核上</p>
+</li>
+<li><p>是否在Running 与Runnable之间切换？ 为什么？ </p>
+</li>
+<li><p>是否在Running 与Sleep之间切换？ 为什么？</p>
+</li>
+</ul>
+</li>
+<li><p>蓝色：<br>作用：Runnable状态的线程持续时间越长，则表示cpu调度越忙，没有及时处理这个任务</p>
+<ul>
+<li><p>是否后台有太多的任务在跑</p>
+</li>
+<li><p>是否频率太低</p>
+</li>
+<li><p>被限制某个具体的cpuset cpu很满？</p>
+</li>
+<li><p>此时Running状态的线程是哪个？ 为什么？ </p>
+</li>
+</ul>
+</li>
+<li><p>白色：<br>作用： 一般都是在等待事情驱动，在互斥锁上被阻塞</p>
+</li>
+<li><p>橘色 不可中断的睡眠态？ 一般都是线程在IO上被阻塞 或者等待磁盘操作 IO操作很慢<br>大量的橘色出现 表明 低内存状态</p>
+</li>
+<li><p>紫色： 可中断的睡眠态</p>
+<ul>
+<li>线程在另一个内核上被阻塞，有可能是正常的，也有可能是不正常的</li>
+</ul>
+</li>
+</ul>
+<p>从上图可以看出每一帧之间存在大量白色色条，说明在等待绘制。因此需要怀疑为什么会等待绘制，例如正在网络或者本地加载数据，三大绘制流程耗时过多？</p>
+<h5 id="5-5-Linux-进程状态"><a href="#5-5-Linux-进程状态" class="headerlink" title="5.5 Linux 进程状态"></a>5.5 Linux 进程状态</h5><p>D 无法中断的休眠状态 (IO 进程)<br>R 正在可运行队列中的<br>S 休眠状态<br>T 停止<br>W 内存交换<br>X 死掉的进程<br>Z 僵尸进程</p>
+<h5 id="5-6-线程优先级"><a href="#5-6-线程优先级" class="headerlink" title="5.6 线程优先级"></a>5.6 线程优先级</h5><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Process.setThreadPriority()&#x2F; Thread</span><br></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>thread_priority_display = -4<br>thread_priority_foreground = -2<br>thread_priority_default = 0<br>thread_priority_background = 10<br>thread_priority_lowest = 19</p>
+</blockquote>
+<h5 id="5-7-调查步骤"><a href="#5-7-调查步骤" class="headerlink" title="5.7 调查步骤"></a>5.7 调查步骤</h5><ul>
+<li><p>使用原生设置的<code>Profile GPU Rendering（GPU渲染模式分析）</code>功能，大概看一下柱状图哪些地方丢帧严重</p>
+</li>
+<li><p>使用Systrace查看丢帧发生的时刻线程状态，缩小调查范围，参考4.4怀疑项。</p>
+</li>
+<li><p>使用Android Studio查看调用栈，详细分析代码耗时/block原因。</p>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>Android</tag>
+        <tag>系统优化</tag>
+        <tag>Systrace</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>重温PackageManagerService-源码分析</title>
+    <url>/2021/10/19/%E9%87%8D%E6%B8%A9PackageManagerService-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h4 id="声明"><a href="#声明" class="headerlink" title="声明"></a>声明</h4><p>此次blog分析的源码是Android Q的代码，如果在Android Q以前找不到对应的方法，可以同步Android Q代码找找试试。PKMS服务在Android N/O/P三个版本变化不大，升级到Android Q有较大变化，有些方法名字一样，内部实现可能不一样了。</p>
+<p>如下是Android Q pm目录下的源码分析笔记：<a href="https://github.com/oujie123/PackageManagerService">PackageManagerService源码跟踪分析笔记传送门</a></p>
+<h4 id="1-PKMS概述"><a href="#1-PKMS概述" class="headerlink" title="1.PKMS概述"></a>1.PKMS概述</h4><p>PackageManagerService（简称 PKMS），是 Android 系统中核心服务之一，负责应用程序的<strong>安装，卸载，包信息查询</strong>等工作。</p>
+<p>Android系统启动时，会启动（应用程序管理服务器PKMS），此服务负责扫描系统中特定的目录，寻找里面的APK格式的文件，并对这些文件进行解析，然后得到应用程序相关信息，最后完成应用程序的安装。</p>
+<p>PKMS在安装应用过程中, 会全面解析应用程序的AndroidManifest.xml文件, 来得到Activity, Service,  BroadcastReceiver, ContextProvider 等信息, 在结合PKMS服务就可以在OS中正常的使用应用程序了。</p>
+<p>在Android系统中, 系统启动时由SystemServer启动PKMS服务, 启动该服务后会执行应用程序的安装过程,<br>接下来后就会<strong>重点的分析SystemServer启动PKMS服务的过程, 叙述在Android系统中安装应用程序的过程。</strong></p>
+<p>PKMS从大方向上看主要完成以下三大功能：</p>
+<ul>
+<li>解析AndroidNanifest.xml清单文件，解析清单文件中的所有节点信息</li>
+<li>扫描.apk文件，安装系统应用，安装本地应用等</li>
+<li>管理本地应用，主要提供安装，卸载，应用信息查询等功能</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Framework</category>
+      </categories>
+      <tags>
+        <tag>Android</tag>
+        <tag>Framework</tag>
+        <tag>PKMS</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>聚媒体应用卡顿分析</title>
+    <url>/2021/10/15/%E8%81%9A%E5%AA%92%E4%BD%93%E5%BA%94%E7%94%A8%E5%8D%A1%E9%A1%BF%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h4 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h4><p>下文中提到的耗时都是大于16ms的耗时，比较低的耗时没有列出。</p>
+<h4 id="1-卡顿调查"><a href="#1-卡顿调查" class="headerlink" title="1.卡顿调查"></a>1.卡顿调查</h4><p>使用原生设置的<code>Profile GPU Rendering GPU渲染模式分析</code>工具，粗略查看丢帧情况，看哪些界面丢帧严重。</p>
+<p><strong>绿色线是16.7ms的界面刷新线</strong>。</p>
+<h5 id="1-1-应用启动"><a href="#1-1-应用启动" class="headerlink" title="1.1 应用启动"></a>1.1 应用启动</h5><p>可以看出当聚媒体启动的时候，会有一段事件丢帧特别严重，如下图。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-6fec513f9373c12d.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="启动丢帧.jpg"></p>
+<h5 id="1-2-界面滑动"><a href="#1-2-界面滑动" class="headerlink" title="1.2 界面滑动"></a>1.2 界面滑动</h5><p>可以看出当界面滑动的时候，资源加载也会出现比较严重的丢帧情况。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-8bc457a502223bcb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="加载资源丢帧.jpg"></p>
+<h5 id="1-3-资源缓存"><a href="#1-3-资源缓存" class="headerlink" title="1.3 资源缓存"></a>1.3 资源缓存</h5><p>当界面来回跳转的时候，部分界面会存在没有缓存，或者缓存数据不够的情况，也有丢帧情况。</p>
+<p>此类场景需要兼顾考虑内存和丢帧的折中选择。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-6357867bd92c8905.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="重复加载资源.jpg"></p>
+<h4 id="2-Systrace调查丢帧时系统情况"><a href="#2-Systrace调查丢帧时系统情况" class="headerlink" title="2. Systrace调查丢帧时系统情况"></a>2. Systrace调查丢帧时系统情况</h4><p>可以看出在滑动的时候，加载的一秒多时间内，有很多丢帧的情况。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-66efbe55271192ad.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="滑动丢帧情况.png"></p>
+<p>查看线程情况，UI线程处于sleeping状态。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-d1b4c2e6db62db26.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="当前系统线程状态判断卡顿原因.png"></p>
+<p>可以看到Render线程在调用Drawframe()正在渲染一帧数据，然而可以看到此次渲染花了很长时间，接下来我们就需要看一下为什么那么耗时了。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-14b06b62824e6bc9.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Render渲染.png"></p>
+<h4 id="3-主界面丢帧分析"><a href="#3-主界面丢帧分析" class="headerlink" title="3.主界面丢帧分析"></a>3.主界面丢帧分析</h4><h5 id="3-1-启动引发的背景思考"><a href="#3-1-启动引发的背景思考" class="headerlink" title="3.1 启动引发的背景思考"></a>3.1 启动引发的背景思考</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-83820de251ce519e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="ActivityStart耗时.png"></p>
+<p>启动activity总共耗时357ms，其中比较耗时的有两部分：</p>
+<ul>
+<li>加载主题图片(55ms)w</li>
+<li>加载布局资源(171ms)</li>
+</ul>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-bf22d4b0a242460c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="加载主题.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-42ae23cca36475fb.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="加载布局.png"></p>
+<p><strong>优化建议：</strong></p>
+<p><strong>1.去掉重复背景</strong></p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line">// common/src/main/res/values/styles.xml</span><br><span class="line"><span class="tag">&lt;<span class="name">style</span> <span class="attr">name</span>=<span class="string">&quot;Theme&quot;</span> <span class="attr">parent</span>=<span class="string">&quot;Theme.MaterialComponents.Light.NoActionBar&quot;</span>&gt;</span></span><br><span class="line"><span class="xml">        <span class="tag">&lt;<span class="name">item</span> <span class="attr">name</span>=<span class="string">&quot;android:windowAnimationStyle&quot;</span>&gt;</span>@style/Animation<span class="tag">&lt;/<span class="name">item</span>&gt;</span></span></span><br><span class="line"><span class="xml">        <span class="tag">&lt;<span class="name">item</span> <span class="attr">name</span>=<span class="string">&quot;colorPrimary&quot;</span>&gt;</span>#0080ff<span class="tag">&lt;/<span class="name">item</span>&gt;</span>  &lt;-- 此行删除掉，因为下面背景图(mediax_theme)已经是全屏</span></span><br><span class="line"><span class="xml">        <span class="comment">&lt;!-- 设置无标题 --&gt;</span></span></span><br><span class="line"><span class="xml">        <span class="tag">&lt;<span class="name">item</span> <span class="attr">name</span>=<span class="string">&quot;android:windowNoTitle&quot;</span>&gt;</span>true<span class="tag">&lt;/<span class="name">item</span>&gt;</span></span></span><br><span class="line"><span class="xml">        <span class="comment">&lt;!--设置透明主题--&gt;</span></span></span><br><span class="line"><span class="xml">        <span class="tag">&lt;<span class="name">item</span> <span class="attr">name</span>=<span class="string">&quot;android:windowBackground&quot;</span>&gt;</span>@mipmap/mediax_theme<span class="tag">&lt;/<span class="name">item</span>&gt;</span></span></span><br><span class="line"><span class="xml">        <span class="comment">&lt;!--  &lt;item name=&quot;android:windowFullscreen&quot;&gt;?android:windowNoTitle&lt;/item&gt;--&gt;</span></span></span><br><span class="line"><span class="tag">&lt;/<span class="name">style</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p><strong>优化后</strong>，该页背景加载优化耗时25.86ms, 优化47%。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-4faf7fccb93bbab4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="闪屏页删除背景效果.png"></p>
+<p><strong>2.小播放器背景加载</strong></p>
+<p>关于背景的加载，源代码中是加载的png图片，我们来看一下加载png、加载webp和加载xml的耗时对比。</p>
+<ul>
+<li>使用png加载</li>
+</ul>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-80df44628f0ace7b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="使用png加载.png"></p>
+<ul>
+<li>使用webp加载</li>
+</ul>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-099aa9af2537d8e8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="使用webp加载.png"></p>
+<ul>
+<li>使用xml加载</li>
+</ul>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-c22e2e10855cc6c0.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="使用xml加载.png"></p>
+<p>使用png图片加载背景耗时最长，webp次之，xml耗时最少。但是经过我多轮测试，png和webp两种方式加载图片耗时优化不是很稳定，有时候webp耗时会少一点，有时候会少比较多。但是<strong>xml和以上两种耗时比较稳定，使用xml当背景加载耗时会少20%左右</strong>。</p>
+<p>因此，背景图加载建议如下：</p>
+<ul>
+<li>如果采用纯色作为背景，图像比较简单的情况下，<strong>建议使用xml作为背景图来加载</strong>。</li>
+<li>虽然webp图片比png图片加载耗时没有明确稳定的优化，但是webp图片体积很小，对于小图片的加载建议都使用webp图片。以<code>小播放器背景</code>图片为例，原png图<strong>479Kb</strong>，webp图<strong>265Kb</strong>。</li>
+</ul>
+<h5 id="小结："><a href="#小结：" class="headerlink" title="小结："></a>小结：</h5><p>1.从第一点可以看出背景图重复会直接成<strong>倍数</strong>增加加载耗时，而且会导致UI卡顿。因此自行检查重复背景图情况。目前检查到<strong>有嫌疑</strong>背景重叠的布局有如下，如果不重复可以忽略：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">program/src/main/res/layout/mediax_fragment_dialog_program_select.xml</span><br><span class="line">app/src/main/res/layout/fragment_news_playing.xml  //使用xml加载纯黑背景</span><br><span class="line">app/src/main/res/layout/mediax_fragment_dialog_himalaya_login.xml   //如果是为了自定义一个dialog可以忽略</span><br><span class="line">app/src/main/res/layout/layout_accout_bind.xml</span><br><span class="line">app/src/main/res/layout/mediax_fragment_dialog_kw_unbind.xml  //如果是为了自定义一个dialog可以忽略</span><br><span class="line">app/src/main/res/layout/fragment_program_playing_new.xml // 是否和外层容器的背景重合了？</span><br><span class="line">app/src/main/res/layout/fragment_speaker_dialog.xml   // 是否和外层容器的背景重合了？</span><br><span class="line">app/src/main/res/layout/fragment_media.xml  //tabIndicatorColor重合了，是否可以取消？</span><br><span class="line">app/src/main/res/layout/fragment_search.xml //RecyclerView背景色是否和外部重合？</span><br><span class="line">app/src/main/res/layout/layout_similar_song_play_list_small_player.xml // 背景是否和外部重合？</span><br><span class="line">app/src/main/res/layout/fragment_player_news.xml // 背景是否和外部重合？</span><br><span class="line">app/src/main/res/layout/fragment_player.xml  // 点击播放列表显示出来是否需要隐藏掉后面的界面？</span><br><span class="line">app/src/main/res/layout/fragment_soundhound.xml // 背景是否和最外层背景重复？</span><br><span class="line">app/src/main/res/layout/fragment_music_playing_new.xml  // 背景是否重合</span><br><span class="line">app/src/main/res/layout/fragment_player_program_new.xml  // 背景是否重合可以复用</span><br><span class="line">app/src/main/res/layout/fragment_music_qq.xml  // 外层有白色背景，子空间的背景是否可以取消掉</span><br><span class="line">app/src/main/res/layout/fragment_player_program.xml // 背景是否重合是否可以复用，取消子空间背景</span><br><span class="line">app/src/main/res/layout/fragment_speed_dialog.xml // 背景是否可以重用</span><br><span class="line">app/src/main/res/layout/adapter_music_rank_item.xml  // 有图片了，背景是否可以取消</span><br><span class="line">app/src/main/res/layout/fragment_kw_alipay.xml  // 是否有必要多一层ConstraintLayout</span><br><span class="line">app/src/main/res/layout/fragment_player_news_new.xml  // 背景是否可以重用</span><br><span class="line">app/src/main/res/layout/my_local_radio_item.xml  // 背景是否可以重用</span><br></pre></td></tr></table></figure>
+<p>上面列出的布局请重点看一下布局的背景是否可以延用外部的背景，尽量避免重绘。</p>
+<p>2.控件选择加载了图片就取消背景颜色，能用xml来填充背景的尽量用xml来绘制。</p>
+<h5 id="3-2-加载第一帧耗时分析"><a href="#3-2-加载第一帧耗时分析" class="headerlink" title="3.2 加载第一帧耗时分析"></a>3.2 加载第一帧耗时分析</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-681f7442cb5a5d57.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="启动_绘制第一帧耗时.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-42c6c879c1837dde.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="启动_第一帧测量耗时.png"></p>
+<p>从图中可以看到启动主界面Choreographer绘制第一帧耗时637ms，其中测量耗时530ms,占了绝大多数的时间。自检一下自定义view中onMeasure是否有耗时操作。如果确实是空间比较多耗时可以暂时不优化。但是从下图可以看出加载布局只消耗了150ms, <strong>其他370ms需要媒体FO定位哪里耗时了</strong>。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-f57c6a938c8618ba.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="第一帧measure测量.png"></p>
+<h5 id="3-3-加载RecycleView布局"><a href="#3-3-加载RecycleView布局" class="headerlink" title="3.3 加载RecycleView布局"></a>3.3 加载RecycleView布局</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-44eefc8129a19dc0.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="启动_RecycleView Item.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-c718a56d7b7902ca.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="启动_RecycleView Item_topdown.png"></p>
+<p>在启动阶段加载RecycleView耗时492ms, 其中onMeasure()耗时465ms，创建item和绑定View耗时300ms左右，请FO看此处是否还有优化空间，如果没有可以暂时不优化。</p>
+<h5 id="3-4-滑动"><a href="#3-4-滑动" class="headerlink" title="3.4 滑动"></a>3.4 滑动</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-40223cd824bc3d87.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="主界面滑动分析.png"></p>
+<p>图中放大可以看到在主界面滑动到最底部的过程中，<strong>几乎没有丢帧</strong>。原因应该是在加载主界面的时候，将所有数据全部加载出来了，导致在滑动的时候基本不用加载数据，所以没有丢帧。</p>
+<p><strong>建议：</strong>从上面两个小结看，加载RecycleView界面和数据比较耗时，因此是否可以考虑将上面部分数据的加载实现懒加载，用户看不见的界面数据不加载，或者等启动完成之后再加载。我看<strong>主界面RecycleView的下面有两行半是隐藏的，可以将下半部分未显示的布局和数据延迟加载？</strong></p>
+<h5 id="3-5-布局优化"><a href="#3-5-布局优化" class="headerlink" title="3.5 布局优化"></a>3.5 布局优化</h5><h5 id="3-5-1-冗余view"><a href="#3-5-1-冗余view" class="headerlink" title="3.5.1 冗余view"></a>3.5.1 冗余view</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-b53ceb765602576b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="主界面多余的view.png"></p>
+<p><strong>建议：</strong>此处没有内容多余的view是否可以去掉?</p>
+<h5 id="3-5-2-冗余布局"><a href="#3-5-2-冗余布局" class="headerlink" title="3.5.2 冗余布局"></a>3.5.2 冗余布局</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-24de02b80073f3de.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="主界面冗余布局.png"></p>
+<p><strong>建议：</strong>此处只有一个view,是否可以取消掉该ConstraintLayout？</p>
+<h4 id="4-酷我音乐界面丢帧分析"><a href="#4-酷我音乐界面丢帧分析" class="headerlink" title="4.酷我音乐界面丢帧分析"></a>4.酷我音乐界面丢帧分析</h4><h5 id="4-1-进入酷我音乐界面"><a href="#4-1-进入酷我音乐界面" class="headerlink" title="4.1 进入酷我音乐界面"></a>4.1 进入酷我音乐界面</h5><h5 id="4-1-1-复盘启动酷我音乐界面"><a href="#4-1-1-复盘启动酷我音乐界面" class="headerlink" title="4.1.1 复盘启动酷我音乐界面"></a>4.1.1 复盘启动酷我音乐界面</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-939f7d8fad2686c7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="酷我音乐界面复盘.png"></p>
+<p>调到酷我界面，从Trace文件中可以看到一共分为5个部分加载整个fragment的，分别耗时如下：</p>
+<ul>
+<li>第一部分：耗时<strong>68ms</strong>，测量耗时33ms, 绘制耗时26ms。此部分主要耗时在加载各种titile。</li>
+<li>第二部分：耗时<strong>118ms</strong>，测量耗时99ms, 绘制耗时16ms。此部分主要耗时在加载<code>翻唱``网络</code>这个RecycleView。</li>
+<li>第三部分：耗时<strong>471ms</strong>，测量耗时140ms,布局耗时318ms, 此部分主要耗时在加载<code>音乐歌单</code>这个fagment。</li>
+<li>第四部分：耗时<strong>197ms</strong>，布局耗时186ms, 此部分主要耗时在加载<code>音乐榜单</code>这个fragment。</li>
+<li>第五部分：耗时<strong>352ms</strong>，布局耗时340ms，此部分主要耗时在加载<code>音乐电台</code>这个fragment</li>
+</ul>
+<p>以上多个阶段耗时点来看，该界面主要存在懒加载问题。</p>
+<p><strong>建议：</strong></p>
+<p>使用ViewPager2实现懒加载。<strong>此处由于我不清楚该工程内部数据加载逻辑，请FO适配一下数据加载部分的到各fragment的逻辑。</strong></p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line">// mediax\app\src\main\res\layout\fragment_music_qq.xml</span><br><span class="line">&lt;androidx.viewpager2.widget.ViewPager2        &lt;&lt;---- 修改成ViewPager2即可</span><br><span class="line">            android:id=&quot;@+id/view_pager&quot;</span><br><span class="line">            associatedViewId=&quot;@&#123;R.id.music_tab_layout&#125;&quot;</span><br><span class="line">            fragmentList=&quot;@&#123;vm.fragmentList&#125;&quot;</span><br><span class="line">            fragmentManager=&quot;@&#123;vm.fragmentManagerLiveData&#125;&quot;</span><br><span class="line">            initPageIndex=&quot;@&#123;vm.initPageIndex&#125;&quot;</span><br><span class="line">            android:layout_width=&quot;match_parent&quot;</span><br><span class="line">            android:layout_height=&quot;0dp&quot;</span><br><span class="line">            android:layout_marginTop=&quot;@dimen/x20&quot;</span><br><span class="line">            android:fadingEdgeLength=&quot;50dp&quot;</span><br><span class="line">            android:requiresFadingEdge=&quot;horizontal&quot;</span><br><span class="line">            android:scrollbars=&quot;none&quot;</span><br><span class="line">            app:layout_constraintTop_toBottomOf=&quot;@+id/music_tab_layout&quot; /&gt;</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// mediax\app\src\main\java\com\iflytek\autofly\mediax\ui\page\QQMusicFragment.java</span></span><br><span class="line"></span><br><span class="line">FragmentMusicQqBinding fragmentMusicQqBinding = (FragmentMusicQqBinding) getBinding();</span><br><span class="line">fragmentMusicQqBinding.viewPager.setOffscreenPageLimit(<span class="number">1</span>);  <span class="comment">// 增加此行</span></span><br><span class="line"><span class="comment">// 修改注册回调方法</span></span><br><span class="line">fragmentMusicQqBinding.viewPager.registerOnPageChangeCallback(<span class="keyword">new</span> ViewPager2.OnPageChangeCallback() &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onPageScrolled</span><span class="params">(<span class="keyword">int</span> position, <span class="keyword">float</span> positionOffset, <span class="keyword">int</span> positionOffsetPixels)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onPageSelected</span><span class="params">(<span class="keyword">int</span> position)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; fragments.size(); i++) &#123;</span><br><span class="line">            <span class="keyword">if</span> (i == position) &#123;</span><br><span class="line">                getChildFragmentManager().beginTransaction().show(fragments.get(i)).commit();</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                getChildFragmentManager().beginTransaction().hide(fragments.get(i)).commit();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onPageScrollStateChanged</span><span class="params">(<span class="keyword">int</span> state)</span> </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;);	</span><br></pre></td></tr></table></figure>
+
+
+<p><strong>优化后的启动时间:</strong></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-dff5e591378a3a68.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="酷我音乐界面复盘_优化后.png"></p>
+<p>从图中可以看到使用ViewPager2，将setOffscreenPageLimit()为1之后，只会加载一个界面的内容，耗时44ms。因此从该界面的大方向来说，可以优化掉<code>音乐榜单``音乐电台</code>这两个fragment的加载耗时，此处可以优化<strong>550ms</strong>左右。</p>
+<h5 id="4-1-2-界面布局优化"><a href="#4-1-2-界面布局优化" class="headerlink" title="4.1.2 界面布局优化"></a>4.1.2 界面布局优化</h5><p><strong>4.1.2.1 内嵌ViewPager优化</strong></p>
+<p>该界面从大方向优化之后，针对<code>音乐歌单</code>,<code>音乐榜单</code>,<code>音乐电台</code>这三个Fragment, 在<strong>布局方面</strong>还有优化空间。见如下分析。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-f298c5097fa5cc00.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="音乐歌单界面懒加载.png"></p>
+<p>在<code>音乐歌单</code>界面还内嵌了两个ViewPager，<strong>优化方向参照4.1.1小节</strong>使用ViewPager2懒加载布局，此处有不少tab, 启动耗时在<strong>471ms左右</strong>，应该还有很大优化空间空间。</p>
+<p><strong>4.1.2.2 空间使用合理性</strong></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-b31453fcc3b93636.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="酷我音乐_viewpager_refresh布局.png"></p>
+<p><strong>建议：</strong></p>
+<ul>
+<li>此处需要考虑一个界面是否使用ViewPager是否合理？</li>
+<li>此处需要考虑一下界面是否确有刷新功能需求？</li>
+</ul>
+<h5 id="4-2-滑动RecycleView加载"><a href="#4-2-滑动RecycleView加载" class="headerlink" title="4.2 滑动RecycleView加载"></a>4.2 滑动RecycleView加载</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-60071f50ce78ee93.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="酷我音乐滑动优化.png"></p>
+<p>滑动<code>音乐歌单</code>界面，可以看出滑动两次，界面几乎没有丢帧，说明数据早已加载，此处我们重点思考的方向是<strong>是否数据缓存过多，导致启动该界面变慢。</strong></p>
+<p><strong>建议：</strong>由于当前项目<code>音乐歌单</code>界面用户一次性可见的item默认是10个item, 滑动过程中会有15个item,因此是否可以设置RecycleView加载item的个数，将加载item内容分散到各个滑动环节，减少首次加载过多item引起的耗时。</p>
+<h5 id="4-3-滑动RecycleView回收复用"><a href="#4-3-滑动RecycleView回收复用" class="headerlink" title="4.3 滑动RecycleView回收复用"></a>4.3 滑动RecycleView回收复用</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-b26e0728297787b8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="酷我音乐界面RecycleView复用调查.png"></p>
+<p>上图的操作步骤：在<code>音乐歌单</code>界面向下滑动三次，然后向上滑动两次。从该图可以看出向上滑动几乎没有丢帧，说明RecycleView默认缓存了以上几次滑动的所有数据。</p>
+<p><strong>建议：</strong>我们知道缓存bitmap对象一方面很吃内存资源，另一方面缓存过多item也会影响首次加载耗时。此处的优化建议如上一项，<strong>合理利用RecycleView的回收复用机制</strong>，均衡一下缓存item的量。</p>
+<h4 id="5-喜马拉雅丢帧分析"><a href="#5-喜马拉雅丢帧分析" class="headerlink" title="5.喜马拉雅丢帧分析"></a>5.喜马拉雅丢帧分析</h4><h5 id="5-1-启动"><a href="#5-1-启动" class="headerlink" title="5.1 启动"></a>5.1 启动</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-3b25fd7db69559df.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="喜马拉雅界面_启动.png"></p>
+<p>从上图中可以看到喜马拉雅界面还是和酷我界面存在同样的问题，喜马拉雅有<code>分类节目``在线节目</code>两个fragment,问题是在启动的时候，两个fragment的布局和数据都加载了，导致启动该界面加载<code>分类节目</code>界面耗时689ms，加载<code>在线节目</code>耗时396ms。</p>
+<p><strong>建议:</strong></p>
+<p>使用ViewPager2实现懒加载，只加载一个界面的内容。</p>
+<h5 id="5-2-RecycleView缓存"><a href="#5-2-RecycleView缓存" class="headerlink" title="5.2 RecycleView缓存"></a>5.2 RecycleView缓存</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-e74685d53a9ae6c4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="喜马拉雅界面_缓存.png"></p>
+<p><strong>优化建议</strong>见4.2小节，合理控制RecycleView缓存的item数目。</p>
+<h4 id="6-整体性能参数分析"><a href="#6-整体性能参数分析" class="headerlink" title="6.整体性能参数分析"></a>6.整体性能参数分析</h4><p><strong>说明：</strong></p>
+<ul>
+<li><p>测试场景：测试同学正常测试各个功能。</p>
+</li>
+<li><p>以下监控的性能数据是测试2750个采集周期，每个采集周期10s，7.64小时的数据。</p>
+</li>
+<li><p>内存图横坐标是采集周期，单位：个；纵坐标是内存占用，单位：M</p>
+</li>
+<li><p>CPU图横坐标是采集周期，单位：个；纵坐标是CPU占用，单位：%</p>
+</li>
+<li><p>View图横坐标是采集周期，单位：个；纵坐标是当次采集界面中view的个数，单位：个</p>
+</li>
+</ul>
+<h5 id="6-1-Mediax-内存占用分析"><a href="#6-1-Mediax-内存占用分析" class="headerlink" title="6.1 Mediax 内存占用分析"></a>6.1 Mediax 内存占用分析</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-296a958fe10979c6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="内存.png"></p>
+<p>从内存方面来看:</p>
+<ul>
+<li>MediaX应用内存占用，最高内存<strong>385M</strong>，平均内存<strong>295M</strong></li>
+<li>在监控周期内存在<strong>明显内存抖动</strong>！</li>
+<li>在监控周期内存在<strong>内存泄露</strong>！</li>
+</ul>
+<h5 id="6-2-Mediax-CPU占用分析"><a href="#6-2-Mediax-CPU占用分析" class="headerlink" title="6.2 Mediax CPU占用分析"></a>6.2 Mediax CPU占用分析</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-4c337eeeb5413c7e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="CPU.png"></p>
+<p>从CPU方面来看：</p>
+<ul>
+<li>最大CPU占用46%</li>
+<li>平均CPU占用4.4%</li>
+</ul>
+<h5 id="6-3-Mediax-View占用分析"><a href="#6-3-Mediax-View占用分析" class="headerlink" title="6.3 Mediax View占用分析"></a>6.3 Mediax View占用分析</h5><p><img src="https://upload-images.jianshu.io/upload_images/13838098-05782afbf3009f56.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="界面View个数.png"></p>
+<p>从mediax应用加载View个数来看：</p>
+<ul>
+<li>最多View个数：1308个</li>
+<li>平均View个数：485个</li>
+</ul>
+<h5 id="6-4-整体性能参数小结"><a href="#6-4-整体性能参数小结" class="headerlink" title="6.4 整体性能参数小结"></a>6.4 整体性能参数小结</h5><p>从内存和View图可以看出Mediax应用存在大量图片加载和频繁<em>mirror</em>  GC的情况。此处数据也应证了第3-5章分析的RecycleView过度加载View的分析。</p>
+<h4 id="7-优化方向总结"><a href="#7-优化方向总结" class="headerlink" title="7.优化方向总结"></a>7.优化方向总结</h4><ul>
+<li>使用ViewPager2懒加载Fragment，不用到的Fragment不主动加载。</li>
+<li>合理使用RecycleView的回收复用机制，控制Item预加载个数。</li>
+<li>合理使用布局控件，合理使用ConstraintLayout，减少不必要的布局嵌套。</li>
+<li>有图片的控件的View不要设置<code>android:background</code>选项，否则导致界面重叠，重绘造成界面卡顿。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>Android</tag>
+        <tag>系统优化</tag>
+        <tag>卡顿分析</tag>
       </tags>
   </entry>
 </search>
