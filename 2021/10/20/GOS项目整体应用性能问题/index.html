@@ -1,0 +1,1972 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GOS项目整体应用性能问题 | Learn OS concepts by coding them!</title><meta name="keywords" content="卡顿分析,整体性能分析,Android"><meta name="author" content="Jack Ou"><meta name="copyright" content="Jack Ou"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="referrer" content="no-referrer"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="本文主要叙述GOS项目车机整体应用性能参数分析以及问题暴露。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="GOS项目整体应用性能问题">
+<meta property="og:url" content="https://oujie123.github.io/2021/10/20/GOS%E9%A1%B9%E7%9B%AE%E6%95%B4%E4%BD%93%E5%BA%94%E7%94%A8%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="Learn OS concepts by coding them!">
+<meta property="og:description" content="本文主要叙述GOS项目车机整体应用性能参数分析以及问题暴露。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="article:published_time" content="2021-10-20T08:17:07.000Z">
+<meta property="article:modified_time" content="2021-10-25T17:24:40.498Z">
+<meta property="article:author" content="Jack Ou">
+<meta property="article:tag" content="Android">
+<meta property="article:tag" content="系统优化">
+<meta property="article:tag" content="整体性能分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="shortcut icon" href="https://upload-images.jianshu.io/upload_images/13838098-8a5cd66eafd7c761.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="canonical" href="https://oujie123.github.io/2021/10/20/GOS%E9%A1%B9%E7%9B%AE%E6%95%B4%E4%BD%93%E5%BA%94%E7%94%A8%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":50,"languages":{"author":"作者: Jack Ou","link":"链接: ","source":"来源: Learn OS concepts by coding them!","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: true,
+  islazyload: false,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}
+
+// https://stackoverflow.com/questions/16839698/jquery-getscript-alternative-in-native-javascript
+const getScript = url => new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.async = true
+  script.onerror = reject
+  script.onload = script.onreadystatechange = function() {
+    const loadState = this.readyState
+    if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+    script.onload = script.onreadystatechange = null
+    resolve()
+  }
+  document.head.appendChild(script)
+})</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2021-10-26 01:24:40'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><meta name="generator" content="Hexo 5.3.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">132</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">97</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">9</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Learn OS concepts by coding them!</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">GOS项目整体应用性能问题</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-10-20T08:17:07.000Z" title="发表于 2021-10-20 16:17:07">2021-10-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-10-25T17:24:40.498Z" title="更新于 2021-10-26 01:24:40">2021-10-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Android/">Android</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">6.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>21分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a><strong>目录</strong></h4><p>0.声明</p>
+<p>1.背景</p>
+<p>2.内存监控数据分析</p>
+<p>3.车机内存性能问题总结</p>
+<p>4.优化建议</p>
+<p>5.参考文献</p>
+<h3 id="0-声明"><a href="#0-声明" class="headerlink" title="0.声明"></a>0.声明</h3><p><strong>说明：</strong></p>
+<ul>
+<li>测试场景：测试同学正常测试各个功能，采集周期起始点并非重新开机。</li>
+<li>以下监控的性能数据是测试2750个采集周期，每个采集周期10s，7.64小时的数据。</li>
+<li>内存图横坐标是采集周期，单位：个；纵坐标是内存占用，单位：M</li>
+<li>CPU图横坐标是采集周期，单位：个；纵坐标是CPU占用，单位：%</li>
+<li>View图横坐标是采集周期，单位：个；纵坐标是当次采集界面中view的个数，单位：个</li>
+<li>可用内存图横坐标是采集周期，单位：个；纵坐标是当前系统可用内存，单位：kb</li>
+</ul>
+<h3 id="1-背景"><a href="#1-背景" class="headerlink" title="1.背景"></a>1.背景</h3><p>在以上测试周期日志中，发现有一次lowmemorykiller（LMK）杀进程的记录，通过杀oom_score_adj为906的进程来回收了约300M内存。从此项指标可以看出我们当前的系统长时间运行过程之后，会导致可用内存越来越少，最后触发LMK来回收内存资源。因此，此报告主要分析当前项目中各个应用暴露出来的内存问题。</p>
+<p><img src="https://img-blog.csdnimg.cn/b09b45853f45406fa4e4b7ab79982c3b.png#pic_center" alt="lmk杀进程"></p>
+<h3 id="2-内存监控数据分析"><a href="#2-内存监控数据分析" class="headerlink" title="2.内存监控数据分析"></a>2.内存监控数据分析</h3><h4 id="2-1-车机整体内存情况"><a href="#2-1-车机整体内存情况" class="headerlink" title="2.1 车机整体内存情况"></a>2.1 车机整体内存情况</h4><h5 id="2-1-1-系统总体可用内存"><a href="#2-1-1-系统总体可用内存" class="headerlink" title="2.1.1 系统总体可用内存"></a>2.1.1 系统总体可用内存</h5><p><img src="https://img-blog.csdnimg.cn/5cdcbabab87041c9b6bd09038fab56a2.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_17,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="系统总共可用内存"></p>
+<p>系统总体可用物理内存：<strong>5754876kb ≈ 5.49G</strong></p>
+<h5 id="2-1-2-系统总体可用剩余物理内存"><a href="#2-1-2-系统总体可用剩余物理内存" class="headerlink" title="2.1.2 系统总体可用剩余物理内存"></a>2.1.2 系统总体可用剩余物理内存</h5><p><img src="https://img-blog.csdnimg.cn/d288d415deab4bbea0153915a5085f65.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="系统可用内存"></p>
+<ul>
+<li><p>采集周期起始点所剩内存：2718080kb ≈ 2.59G</p>
+</li>
+<li><p>采集周期内最低所剩内存：724644 ≈ 690M</p>
+<p> (说明：此值是LMK回收后的所剩内存值。当系统内存少于315M时，系统就会自动把<code>/proc/&lt;pid&gt;/oom_score_adj</code>中oom_score_adj的值大于900，少于1000的进程杀掉)</p>
+</li>
+<li><p>从图中可以看出可用内存<strong>在监控周期内持续降低</strong>，出现这种情况有两个原因：</p>
+<ul>
+<li>一是启动了新应用，重新分配了内存导致可用内存下降。</li>
+<li>二是应用<strong>内存泄露</strong>，导致内存持续无法回收。初步判断可用内存持续降低会和内存泄露有关系，因为当前项目几乎全部应用都使用了平台签名，属于系统应用，oom_adj值比较低，正常情况下，所剩内存低于126M才会触发杀这些进程。所以可以近似认为系统应用进程是保活的，所以初步断定可用内存持续下降和应用内存泄露，内存持续无法被回收有关系。</li>
+</ul>
+</li>
+<li><p>从图中可以看出可用内存在<strong>一些时刻有突然陡降的现象</strong>，出现这种情况有两种可能：</p>
+<ul>
+<li>一是某些应用启动加载过多资源，导致内存在短时间内消耗过多，建议应用用时再初始化加载资源。</li>
+<li>二是有进程崩溃或者被杀掉，释放出部分内存。</li>
+</ul>
+</li>
+</ul>
+<h5 id="2-1-3-系统活跃-非活跃内存"><a href="#2-1-3-系统活跃-非活跃内存" class="headerlink" title="2.1.3 系统活跃/非活跃内存"></a>2.1.3 系统活跃/非活跃内存</h5><blockquote>
+<p>Active : 最近使用的内存量，除非绝对必要，否则通常不会回收(以kb为单位)。</p>
+<p>Inactive : 最近使用较少且更有资格回收用于其他目的的内存量(以kb为单位)。</p>
+<p>ActiveFile: 自上次系统回收内存以来，处于活动使用状态或处于活动使用状态的文件缓存内存量（以kb为单位）</p>
+<p>InactiveFile：从磁盘新加载的文件缓存内存量，或者是要回收的候选文件缓存内存量。（以kb为单位）</p>
+</blockquote>
+<p><strong>2.1.3.1 Active图</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/ba74213068824c7aa938db3519062ed0.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="系统总共Active内存"></p>
+<p>从Active内存图可以看出系统所有进程在整个监控周期内平均消耗：3571792kb ≈ 3.41G，总共可用内存5.49G，平均使用率：<strong>62%</strong></p>
+<p><strong>2.1.3.2 Inactive 图</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/d93c57884fc44b1c8a107f78d44599d6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="系统总共Inactive内存"></p>
+<p>从Inactive图中可以看出系统在监控周期内空闲的内存大小平均为：492299kb ≈ 469M，空闲内存率：8.5%，此参数说明系统在特别需要内存的时候可以分配的内存。</p>
+<p><strong>2.1.3.3 Active file图</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c71327a864e94da486f3a45eca91ae99.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="ActiveFile图"></p>
+<p>从Active file图中可以看出系统在监控周期内,系统回收后剩余的内存越来越少，并且存在比较大的抖动。</p>
+<p>缓存活跃文件内存最大：815492kb ≈ 778M；最小：105736kb ≈ 100.8M；平均：429188kb ≈ 409.3M。可以看出在整个监控周期内，系统在持续压缩缓存文件的大小，并且期间存在进程崩溃情况。</p>
+<p><strong>2.1.3.4 InActive file图</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/81d0c099177341378e5f193b6b46a756.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="InactiveFile图"></p>
+<p>从Inactive file图中可以看出系统中在前期有1626812kb ≈ 1.55G <strong>从磁盘新加载的文件缓存内存量，或者有待系统回收的内存！</strong>此处需要调查哪些应用启动会加载过多过大文件到内存。</p>
+<h4 id="2-2-应用内存消耗分析"><a href="#2-2-应用内存消耗分析" class="headerlink" title="2.2 应用内存消耗分析"></a>2.2 应用内存消耗分析</h4><h5 id="2-2-1-内存优化方向与目标"><a href="#2-2-1-内存优化方向与目标" class="headerlink" title="2.2.1 内存优化方向与目标"></a>2.2.1 内存优化方向与目标</h5><p>应用内存优化目标有四个方向：</p>
+<ul>
+<li>无内存泄露</li>
+<li>无内存抖动，小范围内存抖动可接受</li>
+<li>不存在阶梯内存(稳定性)</li>
+<li>降低内存消耗</li>
+</ul>
+<p>下面给出<strong>GOS一期</strong>应用内存监控结果，作为优化目标方向。</p>
+<p>以下是腾讯系应用内存占用情况：</p>
+<p><img src="https://img-blog.csdnimg.cn/a364a7d743794ff8977441b0725fee25.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯语音"></p>
+<p><img src="https://img-blog.csdnimg.cn/9937482b44194b11b6debcee5b3e9145.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯新闻"></p>
+<p><img src="https://img-blog.csdnimg.cn/03b6321a25eb40479f50a829a69b4f34.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯地图"></p>
+<p><img src="https://img-blog.csdnimg.cn/d8e3de4cb621407495ab105f56643319.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯基础库"></p>
+<p><img src="https://img-blog.csdnimg.cn/58ba2d080ec349dc8250f1e2d852f6f6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯音乐"></p>
+<p>以下是高德系内存占用情况：</p>
+<p><img src="https://img-blog.csdnimg.cn/61ef853e8e344172bdc9493cf85544e5.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="高德地图"></p>
+<p><img src="https://img-blog.csdnimg.cn/58a8c389b9504ec0ad430439318245eb.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="高德定位服务"></p>
+<p>以下是中科创达系内存占用情况：</p>
+<p><img src="https://img-blog.csdnimg.cn/278893264da143fe90c5d55e0b327d89.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="智联助手"></p>
+<p><img src="https://img-blog.csdnimg.cn/afe6a55d63cd499bb485374c03b7fc53.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="倒车"></p>
+<p><img src="https://img-blog.csdnimg.cn/098f44976dde439d8cba2d3e9d0512bc.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="语音适配器"></p>
+<p><img src="https://img-blog.csdnimg.cn/37ef56c941914731aa3fa8d50ad98729.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="USB升级"></p>
+<p><strong>小结:</strong></p>
+<p>从上面图中可以看出在监控期间，腾讯系的应用内存最稳定，高德和创达的应用存在小幅波动，在可接受范围内。三家公司的应用总体内存消耗都比较低。</p>
+<h5 id="2-2-2-当前应用内存消耗现状"><a href="#2-2-2-当前应用内存消耗现状" class="headerlink" title="2.2.2 当前应用内存消耗现状"></a>2.2.2 当前应用内存消耗现状</h5><p><strong>2.2.2.1 语音助理</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/a9beca6943244d23a8fd65bb4f208c13.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2语音助理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>436M</td>
+<td>356M</td>
+<td>390M</td>
+<td>存在</td>
+<td>少量</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>降低内存使用</li>
+<li>增加对象复用，减少内存抖动</li>
+</ul>
+<p><strong>2.2.2.2 媒体</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/3e3e09daae654da2bbe588036c7cc24a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2媒体"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>383M</td>
+<td>145M</td>
+<td>295M</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>控制对象创建个数，建立对象池实现对象复用</li>
+<li>调查不能释放的内存</li>
+<li>资源按需加载、调查加载占用大内存的资源原因，bitmap对象是否按空间尺寸压缩加载，预置图片资源放在适合屏幕尺寸的目录中。</li>
+<li>看过之前卡顿分析报告，内存暂用大主要还是存在加载缓存bitmap过多所致。</li>
+</ul>
+<p><strong>2.2.2.3 主屏Launcher</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/309b3a2a911244f29537e1f0fc38c253.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Launcher"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>432M</td>
+<td>118M</td>
+<td>282M</td>
+<td>存在</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>出现阶梯内存，需要<strong>单独跑monkey</strong>调查崩溃原因，保证稳定性</li>
+<li>存在内存抖动需要调查对象分配和复用情况</li>
+</ul>
+<p><strong>2.2.2.4 Avatar</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/79f72a18c6af4e2d94d210b1275cdb43.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Avatar"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>609M</td>
+<td>33M</td>
+<td>242M</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在<strong>严重内存泄露</strong>，调查不能释放的对象</li>
+<li>每次加载对象都在<strong>50-100M</strong>，需要调查为什么一次性需要加载那么多资源，bitmap对象是否按空间尺寸压缩加载</li>
+</ul>
+<p><strong>2.2.2.5 讯飞输入法</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/a658643fdb9c41148d48627bf9b2c67c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2输入法"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>229M</td>
+<td>194M</td>
+<td>211M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查部分对象创建使用完了就被回收的原因，建议对象复用减少内存抖动</li>
+<li>是否可以减少部分资源的加载，输入法应用总体暂用内存比较高</li>
+</ul>
+<p><strong>2.2.2.6 系统设置</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/61b588b840c54a4f9f3cf889db8893d1.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2设置"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>330M</td>
+<td>47M</td>
+<td>155M</td>
+<td>少量</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在<strong>严重内存泄露</strong>，调查不能释放的对象</li>
+<li>有部分<strong>分配大内存</strong>迹象需要调查</li>
+</ul>
+<p><strong>2.2.2.7 车辆设置</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/0c953d2976c34df39b9be28843c6a4ee.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="车辆设置"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>178M</td>
+<td>34M</td>
+<td>121M</td>
+<td>少量</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在<strong>严重内存泄露</strong>，调查不能释放的对象</li>
+<li>有部分<strong>分配大内存</strong>迹象需要调查</li>
+</ul>
+<p><strong>2.2.2.8 空调</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/a3c7f95f05c64b91a3f039d4db3bc658.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2空调"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>185M</td>
+<td>99M</td>
+<td>106M</td>
+<td>否</td>
+<td>否</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查开始阶段是否crash了，需要单独monkey测试稳定性</li>
+</ul>
+<p><strong>2.2.2.9 空调服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/2f42082249fb4866a5d1dee52de0ea54.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2空调服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>94M</td>
+<td>85M</td>
+<td>86M</td>
+<td>否</td>
+<td>否</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查部分分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.10 SystemUi</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/fb336774fa224293b486f8a374194939.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2SystemUi"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>93M</td>
+<td>65M</td>
+<td>78M</td>
+<td>少量</td>
+<td>否</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>监控前期出现内存陡增情况，需要调查原因</li>
+</ul>
+<p><strong>2.2.2.11 账号</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/15fa6f1095434149be82f1bf583c06cb.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2账号"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>121M</td>
+<td>14M</td>
+<td>56M</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在内存抖动需要调查内存复用</li>
+<li>从两端内存图可以看出有内存泄露情况</li>
+<li>出现严重阶梯，需要单独monkey测试稳定性</li>
+</ul>
+<p><strong>2.2.2.12 AVDC</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/323e9499f603455e96729ac5bd57d3a9.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2AVDC"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>61M</td>
+<td>36M</td>
+<td>43M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要单独monkey调查该应用稳定性</li>
+</ul>
+<p><strong>2.2.2.13 DVR</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/f6e18b4b51b84a5da4c1627035745ba1.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2DVR"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>55M</td>
+<td>21M</td>
+<td>40M</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查对象分配和回收，尽量对象复用</li>
+<li>存在<strong>严重内存泄露</strong>，调查不能释放的对象</li>
+</ul>
+<p><strong>2.2.2.14 副屏launcher</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c78534814ffc4f3c957251816c91613a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2副屏Launcher"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>41M</td>
+<td>32M</td>
+<td>33M</td>
+<td>少量</td>
+<td>否</td>
+<td>否</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查局部出现大对象分配场景</li>
+</ul>
+<p><strong>2.2.2.15 btcall</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/6fc1bb839dbb41619da229216244508c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2btcall"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>32M</td>
+<td>23M</td>
+<td>30M</td>
+<td>否</td>
+<td>否</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查早期内存阶梯上升原因，如果因为启动应用，可以忽略。</li>
+</ul>
+<p><strong>2.2.2.16 场景引擎</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/cb3127db15bd4c35a53ea03947c1b292.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2场景引擎"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>38M</td>
+<td>16M</td>
+<td>29M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象分配场景</li>
+<li>对于常用的对象采用对象复用机制</li>
+</ul>
+<p><strong>2.2.2.17 schedule</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/a5db1e8b23b44f3c9a7de1c7dc885338.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2日程"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>39M</td>
+<td>14M</td>
+<td>29M</td>
+<td>少量</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查出现阶梯内存原因是进程被杀还是分配了大对象，从上图看，更像进程被杀的现象，建议先单独跑monkey查看稳定性</li>
+</ul>
+<p><strong>2.2.2.18 媒体子进程</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/ea5a30d22f1b41deb5be25083010530b.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2媒体子进程"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>50M</td>
+<td>10M</td>
+<td>28M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查是否有大资源加载，中间有加载了又被回收的表象，建议按需加载资源</li>
+</ul>
+<p><strong>2.2.2.19 GCS</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/2128ab65759949a7bf3698544b3df4a4.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2GCS"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>40M</td>
+<td>14M</td>
+<td>28M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>数据埋点模块加载数据上报的对象是否可以复用</li>
+<li>账号模块的Bean对象是否可以复用</li>
+<li>调查大对象创建和回收时机，尽量复用对象。</li>
+</ul>
+<p><strong>2.2.2.20 消息中心</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/a8c1b25fd76c406aaacfae761aada4f5.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2消息中心"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>58M</td>
+<td>17M</td>
+<td>27M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象创建情况，实现对象复用机制</li>
+</ul>
+<p><strong>2.2.2.21 讯飞账号中心</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/795ab0f2fc6c466aa2931f1d245c1f5b.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2账号中心"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>35M</td>
+<td>11M</td>
+<td>24M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li><p>调查大对象分配与释放场景</p>
+</li>
+<li><p>复用内存减少内存抖动</p>
+</li>
+</ul>
+<p><strong>2.2.2.22 讯飞SystemServer</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c952e6c34dc8493497a593cbaeeea062.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2讯飞SystemServer"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>37M</td>
+<td>16M</td>
+<td>22M</td>
+<td>少量</td>
+<td>少量</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象创建场景是否在循环中创建对象，此对象是否可以new一个复用。</li>
+</ul>
+<p><strong>2.2.2.23 讯飞aiangela</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/3e7b4824a81642948b87766838e37f0c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2讯飞Aianglela"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>25M</td>
+<td>7M</td>
+<td>17M</td>
+<td>少量</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>单独跑monkey,检测应用稳定性</li>
+</ul>
+<p><strong>2.2.2.24 扩展service</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/e48ec4bec7bd4636a7c44d27f9efc94a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2扩展服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>30M</td>
+<td>12M</td>
+<td>17M</td>
+<td>存在</td>
+<td>不存在</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象创建场景</li>
+</ul>
+<p><strong>2.2.2.25 carplay</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/abaf0252160346eb8cc3588b957c29c0.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarPlay"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>22M</td>
+<td>13M</td>
+<td>16M</td>
+<td>少量可以接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.26 hardkey</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/18a7e4b1969f4a0f8e59bc6fb5c6e6e2.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2硬按键"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>8M</td>
+<td>15M</td>
+<td>少量可接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查监控前期突然升高是否是启动服务，如果是可以暂时不优化。</li>
+</ul>
+<p><strong>2.2.2.27 讯飞平台服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/b53b0d421911491cadb781b89726fe14.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2平台适配器"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>8M</td>
+<td>15M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查监控前期突然升高是否是启动服务，如果是可以暂时不优化。</li>
+</ul>
+<p><strong>2.2.2.28 账号服务端</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/9c7c580a68cb40328b52ef93832f401b.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2账号服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>22M</td>
+<td>11M</td>
+<td>15M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.29 媒体中心服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/3966b395856343bf87555a9f75a06aa7.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2媒体中心服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>15M</td>
+<td>少量</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在少量内存突然抖动场景，需要调查一下发生场景</li>
+<li>内存图后半部分出现阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.30 Power</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/3c7adb43a588413e826aa4ee29ddf529.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarPower"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>10M</td>
+<td>15M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到大量阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.31 screensaver</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/95c21b89c05b4c9aa9a289babf78f6c4.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2屏保"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>9M</td>
+<td>15M</td>
+<td>少量</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.32 Car.hvac</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/a9faa6402f2a4b18aa075171f68c7b1e.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Car空调"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>16M</td>
+<td>8M</td>
+<td>14M</td>
+<td>少量可接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.33 platformservice.Services</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/2e19ff7bb34b45b3b1e01b0e6c37b016.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2平台服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>23M</td>
+<td>11M</td>
+<td>14M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查是稳定性还是在某些场景创建了大对象。</li>
+</ul>
+<p><strong>2.2.2.34 miniprogram</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/f76a70d257bf486a8fd4f953a0d156c6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2小程序"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>79M</td>
+<td>10M</td>
+<td>13M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p>2.2.2.35 caradapter </p>
+<p><img src="https://img-blog.csdnimg.cn/5df09633c03a4535902e22f46f38fa8f.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarAdapter"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>19M</td>
+<td>10M</td>
+<td>13M</td>
+<td>少量可接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+<li>调查某些场面分配大对象</li>
+</ul>
+<p><strong>2.2.2.36 externalkey</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/52f8bb7be12f4834b0f40d7b2a5452fe.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2扩展按键"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>9M</td>
+<td>13M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.37 procmanagement</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/ded982d08e2a401db16c17d36111b265.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2进程管理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>8M</td>
+<td>13M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p>2.2.2.38 原生CAR</p>
+<p><img src="https://img-blog.csdnimg.cn/78c3e4e6d5d343f8baf8133eac75e2e3.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Car"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>21M</td>
+<td>11M</td>
+<td>13M</td>
+<td>少量</td>
+<td>少量可接受</td>
+<td>暂无</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查分配大对象场景</li>
+</ul>
+<p><strong>2.2.2.39 设置服务端</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/17af6e95e7424a54b784db3ae65c732c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2设置服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>13M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.40 carlife</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/a92196692b914d2790f1bf6a0472ff13.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Carlife"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>12M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.41 engineMode</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/13bb1c8095894d60be1c4ed458d7e7c6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2能量管理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>10M</td>
+<td>12M</td>
+<td>暂无</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.42 氛围灯</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/6e90c8fe79e646e4ae5c8ba681f6716d.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2氛围灯"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>9M</td>
+<td>12M</td>
+<td>少量可接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.43 devicemanager</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/fac7fe9ecb324d0ebcddaf6cc1992339.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2设备管理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>10M</td>
+<td>11M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+<li>调查部分场景分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.44 adaptermainservice</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/ddad4a710c424d57b0f055b35857ab25.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2平台适配器old"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>暂无</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查部分场景分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.45 vpamultimode</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/dbc7bd55cf3d4d6f90bd1850d17581b2.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2VPA"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>9M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+<li>调查部分场景分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.46 消息中心服务端</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/58f6fd19570f4957bce0de8da5fe1551.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2消息中心服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+<li>调查部分场景分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.47 时钟同步</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/0c9f93e20d264c0f9967da0e3f40904d.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2时钟同步"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>16M</td>
+<td>8M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.48 德赛ftpserver</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/6c4dfc01ac05474e99634fef16ab44c6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2德赛ftpserver"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>14M</td>
+<td>6M</td>
+<td>11M</td>
+<td>存在</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性（已经提单稳定性问题）</li>
+</ul>
+<p><strong>2.2.2.49 防火墙</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/5ca53abf53a6464dbe08b2f33d00c9b5.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2防火墙"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>13M</td>
+<td>4M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查图中前期的阶梯是否在启动服务</li>
+</ul>
+<p><strong>2.2.2.50 权限管理服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/ccb1bd38bb8543388b03184dfd4db339.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2权限管理服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12M</td>
+<td>5M</td>
+<td>11M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查图中前期的阶梯是否在启动服务</li>
+</ul>
+<p><strong>2.2.2.51 蓝牙服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/5297b10570eb4a4ab839f1cc86563e2c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2蓝牙服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>15M</td>
+<td>7M</td>
+<td>10M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.52 CarAudio</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/f33d59c0fafc411089239727962ff970.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarAudio"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>13M</td>
+<td>5M</td>
+<td>10M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.53 CarScene</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/20e7ad6c67bc4fdbba72a1a7faafb65a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarScene"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>14M</td>
+<td>4M</td>
+<td>10M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.54 Wifi服务端</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/dc92721d382a430bb9756e2f87daf0f6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Wifi服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12M</td>
+<td>4M</td>
+<td>10M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.55  CarService</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c7882a61e6a54bf9907f81aeba917102.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarService"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>7M</td>
+<td>9M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.56 DMS</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/e97dda755ffa4065a779272c82519f4f.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2DMS"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>14M</td>
+<td>6M</td>
+<td>9M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.57 GCS证书管理</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/e66e55097bd24b0d9a5364d651715bb4.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2GCS证书管理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>13M</td>
+<td>5M</td>
+<td>8M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>不上此部分代码，此部分功能由pkisdk完成</li>
+</ul>
+<p><strong>2.2.2.58 CarMessager</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/20bd7ec3ecc4468a85ce805cdfdddf06.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarMessager"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>11M</td>
+<td>3M</td>
+<td>8M</td>
+<td>暂无</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.59 仪表服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/2a2ce4f7c0734534bf6e3e2593bc9506.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2仪表服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>15M</td>
+<td>4M</td>
+<td>8M</td>
+<td>存在</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象申请情况，实现对象复用</li>
+</ul>
+<p><strong>2.2.2.60 CarNcm</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/32d946368560430287d0bc96394ad82c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarNcm"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12M</td>
+<td>3M</td>
+<td>7M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.61 德赛QnxApp</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/855daf404c3841a496f59fab2c81d0e3.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2QnxApp"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12M</td>
+<td>4M</td>
+<td>7M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.62 讯飞applist</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/53ca4401ca4140cdb5897da5170501d6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2讯飞applist"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>48M</td>
+<td>0M</td>
+<td>4M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查该应用实现什么功能，是否可以合并到其他应用中。疑似此进程用完就被杀了</li>
+</ul>
+<p><strong>2.2.2.63 商城</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c886df8dd0cc4e3e941f3e263acae52e.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Mall"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>41M</td>
+<td>0M</td>
+<td>3M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查该应用实现什么功能，是否可以合并到其他应用中。疑似此进程用完就被杀了</li>
+</ul>
+<h3 id="3-车机内存性能问题总结"><a href="#3-车机内存性能问题总结" class="headerlink" title="3 车机内存性能问题总结"></a>3 车机内存性能问题总结</h3><p>从以上系统整体性能与各应用内存性能分析可以发现如下几个问题：</p>
+<ul>
+<li>系统总体内存在随车机运行时间加长，剩余内存逐步降低，最后触发了LMK杀进程机制</li>
+<li>大部分应用内存存在内存抖动</li>
+<li>大部分应用内存存在内存泄露</li>
+<li>部分应用存在阶梯内存，存在稳定性问题</li>
+<li>部分应用存在大内存分配情况</li>
+<li>部分应用自身总体内存占用比较高</li>
+</ul>
+<h3 id="4-优化建议"><a href="#4-优化建议" class="headerlink" title="4.优化建议"></a>4.优化建议</h3><p>针对以上问题，请各FO参考自身应用内存图情况，选择对应的工具进行调查，修复内存问题。针对不同问题，监控调查工具建议如下：</p>
+<ul>
+<li><p>针对有界面的应用可以使用LeakCanary，动态检测应用是否由内存泄露</p>
+<figure class="highlight groovy"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 在build.gradle中添加以下依赖即可，也可以看看参考文献3和4</span></span><br><span class="line">dependencies &#123;</span><br><span class="line">  <span class="comment">// debugImplementation because LeakCanary should only run in debug builds.</span></span><br><span class="line">  debugImplementation <span class="string">&#x27;com.squareup.leakcanary:leakcanary-android:2.7&#x27;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>针对内存抖动和大内存分配调查，可以使用Android Studio的Profile中memory模块来检测。使用方法见<strong>参考文献5</strong></p>
+</li>
+<li><p>针对服务和LeakCanary检测不出来的，可以使用MAT（Memory Analyzer Tools, MAT）,工具下载见<strong>参考文献6</strong></p>
+</li>
+<li><p>针对阶梯内存，存在稳定性情况，可以使用monkey, 晚上针对单个应用跑monkey</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> -p参数后面填入自己应用的包名</span></span><br><span class="line">monkey -p com.timanetwork.appstore --throttle 500 --bugreport --hprof --ignore-crashes --ignore-timeouts --ignore-security-exceptions --ignore-native-crashes --monitor-native-crashes -v -v -v 300000 1 &gt;&gt; /mnt/sdcard/Stability_base_20211023.log 2&gt;&gt; /mnt/sdcard/Stability_base_err_20211023.log &amp;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h4 id="参考文献："><a href="#参考文献：" class="headerlink" title="参考文献："></a>参考文献：</h4><p><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/45487506/what-is-inactivefile-and-activefile-in-proc-meminfo">1. linux - what is Inactive(file) and Active(file) in /proc/meminfo? - Stack Overflow</a></p>
+<p><a target="_blank" rel="noopener" href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/deployment_guide/s2-proc-meminfo">2. /PROC/MEMINFO description</a></p>
+<p><a target="_blank" rel="noopener" href="https://square.github.io/leakcanary/getting_started/">3.Getting Started - LeakCanary (square.github.io)</a></p>
+<p><a target="_blank" rel="noopener" href="https://github.com/square/leakcanary">4.square/leakcanary: A memory leak detection library for Android. (github.com)</a></p>
+<p><a target="_blank" rel="noopener" href="https://developer.android.google.cn/studio/profile/memory-profiler">5.使用内存性能分析器查看应用的内存使用情况  | Android 开发者  | Android Developers (google.cn)</a></p>
+<p><a target="_blank" rel="noopener" href="http://www.eclipse.org/mat/downloads.php">6.Eclipse Memory Analyzer Open Source Project | The Eclipse Foundation</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200">Jack Ou</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200">https://www.jianshu.com/u/10058d760200</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">此文章版权归Jack Ou所有，如有转载，请註明来自原作者</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Android/">Android</a><a class="post-meta__tags" href="/tags/%E7%B3%BB%E7%BB%9F%E4%BC%98%E5%8C%96/">系统优化</a><a class="post-meta__tags" href="/tags/%E6%95%B4%E4%BD%93%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/">整体性能分析</a></div><div class="post_share"><div class="social-share" data-image="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" data-sites="wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏<div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="微信"/></a><div class="post-qr-code-desc">微信</div></li><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="支付宝"/></a><div class="post-qr-code-desc">支付宝</div></li></ul></div></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2021/10/22/Pycharm%E6%BF%80%E6%B4%BB%E6%96%B9%E6%B3%95/"><img class="prev-cover" src="https://upload-images.jianshu.io/upload_images/13838098-dd17b53777a91fd0.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">Pycharm激活方法</div></div></a></div><div class="next-post pull-right"><a href="/2021/10/19/%E9%87%8D%E6%B8%A9PackageManagerService-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"><img class="next-cover" src="https://upload-images.jianshu.io/upload_images/13838098-2438f85e85a99fd4.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">重温PackageManagerService-源码分析</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2021/10/25/聚媒体内存问题分析/" title="聚媒体内存问题分析"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-10-25</div><div class="title">聚媒体内存问题分析</div></div></a></div><div><a href="/2021/08/30/生成bootchart-系统优化/" title="生成bootchart(系统优化)"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-08-30</div><div class="title">生成bootchart(系统优化)</div></div></a></div><div><a href="/2021/09/02/应用和服务裁剪-系统优化/" title="应用和服务裁剪--系统优化"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-09-02</div><div class="title">应用和服务裁剪--系统优化</div></div></a></div><div><a href="/2021/09/17/优化开机动画-系统优化/" title="优化开机动画-系统优化"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-09-17</div><div class="title">优化开机动画-系统优化</div></div></a></div><div><a href="/2021/10/13/GOS优化第一版启动耗时分析/" title="优化第一版启动耗时分析"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-10-13</div><div class="title">优化第一版启动耗时分析</div></div></a></div><div><a href="/2021/10/15/Systrace使用说明以及使用场景总结/" title="Systrace使用说明以及使用场景总结"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-10-15</div><div class="title">Systrace使用说明以及使用场景总结</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-info-avatar is-center"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">Jack Ou</div><div class="author-info__description">All things are difficult before they are easy</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">132</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">97</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">9</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200"><i class="fad fa-sheep"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/oujie123" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://www.jianshu.com/u/10058d760200" target="_blank" title="简书"><i class="fas fa-book-open"></i></a><a class="social-icon" href="https://blog.csdn.net/u010248147" target="_blank" title="CSDN"><i class="fab fa-microblog"></i></a><a class="social-icon" href="mailto:815669856@qq.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎收看我的博客，很高兴与您一同成长！</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9B%AE%E5%BD%95"><span class="toc-number">1.</span> <span class="toc-text">目录</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#0-%E5%A3%B0%E6%98%8E"><span class="toc-number"></span> <span class="toc-text">0.声明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%83%8C%E6%99%AF"><span class="toc-number"></span> <span class="toc-text">1.背景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%86%85%E5%AD%98%E7%9B%91%E6%8E%A7%E6%95%B0%E6%8D%AE%E5%88%86%E6%9E%90"><span class="toc-number"></span> <span class="toc-text">2.内存监控数据分析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-%E8%BD%A6%E6%9C%BA%E6%95%B4%E4%BD%93%E5%86%85%E5%AD%98%E6%83%85%E5%86%B5"><span class="toc-number">1.</span> <span class="toc-text">2.1 车机整体内存情况</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-1-%E7%B3%BB%E7%BB%9F%E6%80%BB%E4%BD%93%E5%8F%AF%E7%94%A8%E5%86%85%E5%AD%98"><span class="toc-number">1.1.</span> <span class="toc-text">2.1.1 系统总体可用内存</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-2-%E7%B3%BB%E7%BB%9F%E6%80%BB%E4%BD%93%E5%8F%AF%E7%94%A8%E5%89%A9%E4%BD%99%E7%89%A9%E7%90%86%E5%86%85%E5%AD%98"><span class="toc-number">1.2.</span> <span class="toc-text">2.1.2 系统总体可用剩余物理内存</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-3-%E7%B3%BB%E7%BB%9F%E6%B4%BB%E8%B7%83-%E9%9D%9E%E6%B4%BB%E8%B7%83%E5%86%85%E5%AD%98"><span class="toc-number">1.3.</span> <span class="toc-text">2.1.3 系统活跃&#x2F;非活跃内存</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E6%B6%88%E8%80%97%E5%88%86%E6%9E%90"><span class="toc-number">2.</span> <span class="toc-text">2.2 应用内存消耗分析</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-1-%E5%86%85%E5%AD%98%E4%BC%98%E5%8C%96%E6%96%B9%E5%90%91%E4%B8%8E%E7%9B%AE%E6%A0%87"><span class="toc-number">2.1.</span> <span class="toc-text">2.2.1 内存优化方向与目标</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-2-%E5%BD%93%E5%89%8D%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E6%B6%88%E8%80%97%E7%8E%B0%E7%8A%B6"><span class="toc-number">2.2.</span> <span class="toc-text">2.2.2 当前应用内存消耗现状</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E8%BD%A6%E6%9C%BA%E5%86%85%E5%AD%98%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98%E6%80%BB%E7%BB%93"><span class="toc-number"></span> <span class="toc-text">3 车机内存性能问题总结</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E4%BC%98%E5%8C%96%E5%BB%BA%E8%AE%AE"><span class="toc-number"></span> <span class="toc-text">4.优化建议</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E6%96%87%E7%8C%AE%EF%BC%9A"><span class="toc-number">1.</span> <span class="toc-text">参考文献：</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2021/10/25/%E8%81%9A%E5%AA%92%E4%BD%93%E5%86%85%E5%AD%98%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/" title="聚媒体内存问题分析"><img src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="聚媒体内存问题分析"/></a><div class="content"><a class="title" href="/2021/10/25/%E8%81%9A%E5%AA%92%E4%BD%93%E5%86%85%E5%AD%98%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/" title="聚媒体内存问题分析">聚媒体内存问题分析</a><time datetime="2021-10-25T03:06:08.000Z" title="发表于 2021-10-25 11:06:08">2021-10-25</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/10/22/Pycharm%E6%BF%80%E6%B4%BB%E6%96%B9%E6%B3%95/" title="Pycharm激活方法"><img src="https://upload-images.jianshu.io/upload_images/13838098-dd17b53777a91fd0.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pycharm激活方法"/></a><div class="content"><a class="title" href="/2021/10/22/Pycharm%E6%BF%80%E6%B4%BB%E6%96%B9%E6%B3%95/" title="Pycharm激活方法">Pycharm激活方法</a><time datetime="2021-10-22T08:54:57.000Z" title="发表于 2021-10-22 16:54:57">2021-10-22</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/10/20/GOS%E9%A1%B9%E7%9B%AE%E6%95%B4%E4%BD%93%E5%BA%94%E7%94%A8%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98/" title="GOS项目整体应用性能问题"><img src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="GOS项目整体应用性能问题"/></a><div class="content"><a class="title" href="/2021/10/20/GOS%E9%A1%B9%E7%9B%AE%E6%95%B4%E4%BD%93%E5%BA%94%E7%94%A8%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98/" title="GOS项目整体应用性能问题">GOS项目整体应用性能问题</a><time datetime="2021-10-20T08:17:07.000Z" title="发表于 2021-10-20 16:17:07">2021-10-20</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/10/19/%E9%87%8D%E6%B8%A9PackageManagerService-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" title="重温PackageManagerService-源码分析"><img src="https://upload-images.jianshu.io/upload_images/13838098-2438f85e85a99fd4.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="重温PackageManagerService-源码分析"/></a><div class="content"><a class="title" href="/2021/10/19/%E9%87%8D%E6%B8%A9PackageManagerService-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" title="重温PackageManagerService-源码分析">重温PackageManagerService-源码分析</a><time datetime="2021-10-19T15:33:24.000Z" title="发表于 2021-10-19 23:33:24">2021-10-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/10/15/Systrace%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E%E4%BB%A5%E5%8F%8A%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF%E6%80%BB%E7%BB%93/" title="Systrace使用说明以及使用场景总结"><img src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Systrace使用说明以及使用场景总结"/></a><div class="content"><a class="title" href="/2021/10/15/Systrace%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E%E4%BB%A5%E5%8F%8A%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF%E6%80%BB%E7%BB%93/" title="Systrace使用说明以及使用场景总结">Systrace使用说明以及使用场景总结</a><time datetime="2021-10-15T02:22:04.000Z" title="发表于 2021-10-15 10:22:04">2021-10-15</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By Jack Ou</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi, welcome to my <a href="https://oujie123.github.io/">blog</a>!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><div class="search-dialog__title" id="local-search-title">本地搜索</div><div id="local-input-panel"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div></div><hr/><div id="local-search-results"></div><span class="search-close-button"><i class="fas fa-times"></i></span></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script>function panguFn () {
+  if (typeof pangu === 'object') pangu.spacingElementById('content-inner')
+  else {
+    getScript('https://cdn.jsdelivr.net/npm/pangu/dist/browser/pangu.min.js')
+      .then(() => {
+        pangu.spacingElementById('content-inner')
+      })
+  }
+}
+
+function panguInit () {
+  if (false){
+    GLOBAL_CONFIG_SITE.isPost && panguFn()
+  } else {
+    panguFn()
+  }
+}
+
+document.addEventListener('DOMContentLoaded', panguInit)</script><script src="/js/search/local-search.js"></script><script>var preloader = {
+  endLoading: () => {
+    document.body.style.overflow = 'auto';
+    document.getElementById('loading-box').classList.add("loaded")
+  },
+  initLoading: () => {
+    document.body.style.overflow = '';
+    document.getElementById('loading-box').classList.remove("loaded")
+
+  }
+}
+window.addEventListener('load',()=> {preloader.endLoading()})</script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="true" data-click="true"></script><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-fluttering-ribbon.min.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="99" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-nest.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/activate-power-mode.min.js"></script><script>POWERMODE.colorful = true;
+POWERMODE.shake = true;
+POWERMODE.mobile = true;
+document.body.addEventListener('input', POWERMODE);
+</script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-heart.min.js" async="async" mobile="true"></script><script id="click-show-text" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-show-text.min.js" data-mobile="true" data-text="I,LOVE,YOU" data-fontsize="15px" data-random="false" async="async"></script></div></body></html>

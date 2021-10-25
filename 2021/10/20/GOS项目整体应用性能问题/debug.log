@@ -1,0 +1,15 @@
+[1022/145100.112:INFO:crash_reporting.cc(219)] Crash reporting enabled for process: browser
+[1022/145100.219:INFO:crash_reporting.cc(219)] Crash reporting enabled for process: gpu-process
+[1022/145100.409:INFO:crash_reporting.cc(219)] Crash reporting enabled for process: utility
+[1022/145300.228:INFO:crash_reporting.cc(219)] Crash reporting enabled for process: gpu-process
+[1022/162946.345:WARNING:angle_platform_impl.cc(45)] compileToBinary(256): 
+C:\fakepath(75,10-46): warning X3571: pow(f, e) will not work for negative f, use abs(f) or conditionally handle negative values if you expect them
+C:\fakepath(98,10-46): warning X3571: pow(f, e) will not work for negative f, use abs(f) or conditionally handle negative values if you expect them
+
+[1022/162959.623:ERROR:angle_platform_impl.cc(40)] present(934): Present failed with HRESULT: 0x887A0022
+[1022/163016.543:ERROR:ssl_client_socket_impl.cc(941)] handshake failed; returned -1, SSL error code 1, net_error -101
+[1022/163017.090:ERROR:ssl_client_socket_impl.cc(941)] handshake failed; returned -1, SSL error code 1, net_error -103
+[1022/163017.091:ERROR:ssl_client_socket_impl.cc(941)] handshake failed; returned -1, SSL error code 1, net_error -103
+[1022/163017.093:ERROR:ssl_client_socket_impl.cc(941)] handshake failed; returned -1, SSL error code 1, net_error -103
+[1022/163017.766:ERROR:ssl_client_socket_impl.cc(941)] handshake failed; returned -1, SSL error code 1, net_error -103
+[1022/163418.450:ERROR:ssl_client_socket_impl.cc(941)] handshake failed; returned -1, SSL error code 1, net_error -103

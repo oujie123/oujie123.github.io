@@ -10657,4 +10657,1995 @@ fastboot boot $ANDROID_PRODUCT_OUT/boot.img
         <tag>卡顿分析</tag>
       </tags>
   </entry>
+  <entry>
+    <title>聚媒体内存问题分析</title>
+    <url>/2021/10/25/%E8%81%9A%E5%AA%92%E4%BD%93%E5%86%85%E5%AD%98%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h3 id="0-前言"><a href="#0-前言" class="headerlink" title="0.前言"></a>0.前言</h3><p>从《GOS项目车机整体内存性能问题分析报告》中可以看到媒体应用是比较消耗内存的应用，并且确实存在一定内存问题，因此此报告主要针对聚媒体应用的宏观测出的内存问题，细节分析存在问题点和优化方案。</p>
+<p>从报告中取出聚媒体的内存现状如下：</p>
+<p><img src="https://img-blog.csdnimg.cn/32e8dc910f09478f8b6e8eb3863577ff.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2媒体"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>383M</td>
+<td>145M</td>
+<td>295M</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p>因此，我们从如下三个方面来看看聚媒体如何优化：</p>
+<ul>
+<li>大内存分配</li>
+<li>内存抖动</li>
+<li>内存泄露</li>
+</ul>
+<h3 id="1-大内存分配与内存抖动"><a href="#1-大内存分配与内存抖动" class="headerlink" title="1.大内存分配与内存抖动"></a>1.大内存分配与内存抖动</h3><h4 id="1-1-APP静止状态内存"><a href="#1-1-APP静止状态内存" class="headerlink" title="1.1 APP静止状态内存"></a>1.1 APP静止状态内存</h4><p><strong>静止状态内存</strong>可以粗略理解成媒体应用非界面运行所消耗的内存，也可以理解成运行后台服务消耗的内存。</p>
+<p><img src="https://img-blog.csdnimg.cn/4f6bfadf0bf04d1bb629335e09d2f25d.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_10,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="媒体静止内存"></p>
+<p>媒体应用静止情况下占用内存166.4M，其中Native消耗99.3M，Code消耗51.6M，java消耗12.4M。</p>
+<ul>
+<li><p><strong>Native</strong>：从 C 或 C++ 代码分配的对象的内存。</p>
+<p>即使您的应用中不使用 C++，您也可能会看到此处使用了一些原生内存，因为即使您编写的代码采用 Java 或 Kotlin 语言，Android 框架仍使用原生内存代表您处理各种任务，如处理图像资源和其他图形。</p>
+</li>
+<li><p><strong>Code</strong>：您的应用用于处理代码和资源（如 dex 字节码、经过优化或编译的 dex 代码、.so 库和字体）的内存。</p>
+</li>
+</ul>
+<ul>
+<li><strong>Java</strong>：从 Java 或 Kotlin 代码分配的对象的内存。</li>
+</ul>
+<p>如下对象需要FO调查一下是否分配合理，针对多次调用的场景是否可以复用。</p>
+<h5 id="1-1-1-SegValue对象"><a href="#1-1-1-SegValue对象" class="headerlink" title="1.1.1 SegValue对象"></a>1.1.1 SegValue对象</h5><p><img src="https://img-blog.csdnimg.cn/9dfe7f8a6adc4efda13eb64ad6c2f72f.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="静止SegValue"></p>
+<p>在静止状态媒体应用会创建4812个SegValue对象，需要FO看一下是否用到，我在代码中没有grep到对应的引用。</p>
+<h5 id="1-1-2-RadioInfo对象"><a href="#1-1-2-RadioInfo对象" class="headerlink" title="1.1.2 RadioInfo对象"></a>1.1.2 RadioInfo对象</h5><p><img src="https://img-blog.csdnimg.cn/765ba12dc3934cc684de2065e2725089.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_11,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="静止RadioInfo"></p>
+<p>在静止状态媒体应用当扫描到电台频段的时候，会创建一个RadioInfo()对象，从图中可以看出，在此轮扫描中创建了914个对象。此处请使用<code>对象池</code>来添加对象。</p>
+<p>PS: 代码中还有创建RadioInfo()对象的地方，请调查一下使用对象池。</p>
+<p><strong>优化建议：</strong></p>
+<p>示例如下，<strong>经过如下修复之后，可以减少大对象创建所消耗的内存和减少内存抖动。</strong></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// mediax\common\src\main\java\com\gxatek\mediax\common\usecase\RadioScanUseCase.java</span></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onScanFrequency</span><span class="params">(<span class="keyword">int</span> frequency, <span class="keyword">boolean</span> valid)</span> </span>&#123;</span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">        RadioInfo findRadioInfo = <span class="keyword">new</span> RadioInfo();   <span class="comment">// 此处从对象池中获取一个对象</span></span><br><span class="line">    	<span class="comment">// RadioInfo findRadioInfo = mPool.acquire();</span></span><br><span class="line">        findRadioInfo.setFrequency(String.valueOf(frequency));</span><br><span class="line"></span><br><span class="line">        ......</span><br><span class="line">        <span class="comment">// 对对象进行操作    </span></span><br><span class="line">        ......</span><br><span class="line">            </span><br><span class="line">        <span class="keyword">if</span> (!validRadioInfosPart.contains(findRadioInfo)) &#123;</span><br><span class="line">            validRadioInfosPart.add(Math.max(searchIndex, <span class="number">0</span>), findRadioInfo); <span class="comment">// 把对象加入列表</span></span><br><span class="line">            <span class="comment">// 释放对象</span></span><br><span class="line">            <span class="comment">// mPool.release(findRadioInfo);</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        getUseCaseCallback().onSuccess(</span><br><span class="line">                <span class="keyword">new</span> ResponseValue&lt;&gt;(<span class="keyword">new</span> Pair&lt;&gt;(validRadioInfosPart, searchIndex),</span><br><span class="line">                        <span class="keyword">new</span> ResponseStatus(ResponseCode.DATA_IS_VALID, <span class="keyword">true</span>)));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h5 id="1-1-3-Gson的TypeToken"><a href="#1-1-3-Gson的TypeToken" class="headerlink" title="1.1.3 Gson的TypeToken"></a>1.1.3 Gson的TypeToken</h5><p><img src="https://img-blog.csdnimg.cn/2568b03da3304e799d3be406f8054dff.png#pic_center" alt="静止GsonType复用"></p>
+<p>代码中大量用到Gson解析json字段，在解析之前都创建了一个TypeToken对象，请FO查看该对象是否可以缓存下来复用。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 代码举例</span></span><br><span class="line"><span class="comment">// mediax\common\src\main\java\com\gxatek\mediax\common\usecase\ResumePlayRadioUseCase.java</span></span><br><span class="line"><span class="keyword">switch</span> (requestValues.radioType) &#123;</span><br><span class="line">    <span class="keyword">case</span> RadioServiceCons.RadioType.FM:</span><br><span class="line">        <span class="comment">// 如下两个TypeToken的Type是一样的，请复用Type</span></span><br><span class="line">        mHistoryRadioList = GsonUtil.fromJson(SPUtil.getInstance().getString(Configs.HISTORY_FM_RADIO_LIST), <span class="keyword">new</span> TypeToken&lt;List&lt;RadioInfo&gt;&gt;()&#123;&#125;.getType());</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">case</span> RadioServiceCons.RadioType.AM:</span><br><span class="line">        <span class="comment">// 如下两个TypeToken的Type是一样的，请复用Type</span></span><br><span class="line">        mHistoryRadioList = GsonUtil.fromJson(SPUtil.getInstance().getString(Configs.HISTORY_AM_RADIO_LIST), <span class="keyword">new</span> TypeToken&lt;List&lt;RadioInfo&gt;&gt;()&#123;&#125;.getType());</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="1-2-媒体库主界面"><a href="#1-2-媒体库主界面" class="headerlink" title="1.2 媒体库主界面"></a>1.2 媒体库主界面</h4><p><img src="https://img-blog.csdnimg.cn/0ddd0ce701f244ac98c260555fdcb341.png#pic_center" alt="媒体加载主界面内存"></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Total</th>
+<th>Native</th>
+<th>Code</th>
+<th>Java</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>静止状态</td>
+<td>166.4M</td>
+<td>99.3M</td>
+<td>51.6M</td>
+<td>12.4M</td>
+</tr>
+<tr>
+<td>主界面</td>
+<td>231.8M</td>
+<td>157.9M</td>
+<td>53.7M</td>
+<td>14.4M</td>
+</tr>
+</tbody></table>
+<p>从静止状态到进入主界面，内存消耗<strong>增加65.4M</strong>，其中主要是Native消耗了内存，<strong>占用58.6M</strong></p>
+<p>因此，从宏观上，主界面增长的内存主要是Native消耗了，根据经验，主要是加载Bitmap消耗了，接下来，我们来调查Bitmap消耗的内存情况。</p>
+<p><img src="https://img-blog.csdnimg.cn/9b9dc97512af4fe8a6cc5bc7a46001fb.png#pic_center" alt="主界面Bitmap内存消耗"></p>
+<p>可以从图中看到主界面加载了38个Bitmap对象，消耗24M内存，逆向推导，查看bitmap加载的方法。从代码中可以看到主界面的图片是使用Glide加载的，代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//  mediax\common\src\main\java\com\gxatek\mediax\common\binding_adapter\ImageBindingAdapter.java</span></span><br><span class="line">Glide.with(view)</span><br><span class="line">    .load(imageUrl)</span><br><span class="line">    .diskCacheStrategy(DiskCacheStrategy.RESOURCE)</span><br><span class="line">    .error(error_resId)</span><br><span class="line">    .placeholder(place_resId)</span><br><span class="line">    .error(error_resId)</span><br><span class="line">    .apply(options)</span><br><span class="line">    .into(view);</span><br></pre></td></tr></table></figure>
+<p>Glide是一个非常优秀的图片加载框架，但是使用Glide来加载图片会依赖于云端给的图片大小，如果云端给的图片特别大，而我们使用的空间比较小，就会出现过度加载的情况，因此推荐在使用Glide加载图片的时候，使用<code>override</code>方法来对图片进行按照空间的尺寸压缩。示例如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Glide.with(view)</span><br><span class="line">    .load(imageUrl)</span><br><span class="line">    .diskCacheStrategy(DiskCacheStrategy.RESOURCE)</span><br><span class="line">    .error(error_resId)</span><br><span class="line">    .placeholder(place_resId)</span><br><span class="line">    .error(error_resId) </span><br><span class="line">    .override(<span class="number">200</span>, <span class="number">200</span>)   <span class="comment">// 控件大小为200 * 200，加载图片大小自己控制，不受制于云端。</span></span><br><span class="line">    .apply(options)</span><br><span class="line">    .into(view);</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="1-3-酷我音乐界面"><a href="#1-3-酷我音乐界面" class="headerlink" title="1.3 酷我音乐界面"></a>1.3 酷我音乐界面</h4><p><img src="https://img-blog.csdnimg.cn/592b8b01f5be4d85af1bb3b13a6b64d0.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_12,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="酷我音乐界面内存"></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Total</th>
+<th>Native</th>
+<th>Code</th>
+<th>Java</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>主界面</td>
+<td>224.9M</td>
+<td>150.7M</td>
+<td>54.9M</td>
+<td>13.1M</td>
+</tr>
+<tr>
+<td>酷我音乐界面</td>
+<td>257.7M</td>
+<td>174.9M</td>
+<td>54.9M</td>
+<td>18.9M</td>
+</tr>
+</tbody></table>
+<p>从主界面进入酷我音乐界面，内存消耗<strong>增加32.8M</strong>，其中主要是Native消耗了内存，<strong>占用24.2M</strong>。</p>
+<p>酷我音乐界面创建了124个Bitmap对象，占用34M内存。</p>
+<h5 id="1-3-1-背景图片重复加载"><a href="#1-3-1-背景图片重复加载" class="headerlink" title="1.3.1 背景图片重复加载"></a>1.3.1 背景图片重复加载</h5><p><img src="https://img-blog.csdnimg.cn/d4f8bcfd023b4abf810453a30a73d63f.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="酷我音乐背景图片占用大内存"></p>
+<p>图中可以看到有两个1080*1920尺寸的图片加载，此处怀疑是<strong>该界面有两层背景图片！</strong>一张图片暂用8M左右内存。</p>
+<p><strong>PS：</strong>主界面，酷我音乐界面，喜马拉雅界面都需要看一下是否有重复加载背景图片的情况。</p>
+<h5 id="1-3-2-过度加载bitmap"><a href="#1-3-2-过度加载bitmap" class="headerlink" title="1.3.2 过度加载bitmap"></a>1.3.2 过度加载bitmap</h5><p><img src="https://img-blog.csdnimg.cn/e666f796caf84fd492d94d1f88b23869.jpg?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="酷我音乐界面"></p>
+<p>从图中看到RecycleView中<strong>不滑动只显示10个图片，滑动也最多显示15个图片</strong>，实际上该界面加载了<strong>124个Bitmap</strong>，需要FO对该RecycleView加载的内容数做限制。</p>
+<h4 id="1-4-喜马拉雅听界面"><a href="#1-4-喜马拉雅听界面" class="headerlink" title="1.4 喜马拉雅听界面"></a>1.4 喜马拉雅听界面</h4><p><img src="https://img-blog.csdnimg.cn/9068f1582dda4956a9e01e99e1777c01.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_11,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="喜马拉雅FM界面内存"></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Total</th>
+<th>Native</th>
+<th>Code</th>
+<th>Java</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>主界面</td>
+<td>217.5M</td>
+<td>141.4M</td>
+<td>54.9M</td>
+<td>14.4M</td>
+</tr>
+<tr>
+<td>酷我音乐界面</td>
+<td>315.4M</td>
+<td>186.3M</td>
+<td>55.1M</td>
+<td>65.6M</td>
+</tr>
+</tbody></table>
+<p>从主界面进入喜马拉雅FM界面，内存消耗<strong>增加97.9M</strong>，其中主要是Native消耗了内存，<strong>占用44.9M</strong>。</p>
+<p>喜马拉雅FM界面创建Bitmap对象91个，消耗内存31.4M。</p>
+<h5 id="1-4-1-Bitmap内存占用问题"><a href="#1-4-1-Bitmap内存占用问题" class="headerlink" title="1.4.1 Bitmap内存占用问题"></a>1.4.1 Bitmap内存占用问题</h5><p><img src="https://img-blog.csdnimg.cn/b430a4be1879424499f7c15ad8328534.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="喜马拉雅FM图片占用大内存"></p>
+<p>从上图中可以看出问题和酷我音乐界面一样</p>
+<ul>
+<li><strong>背景加载了两次</strong></li>
+<li><strong>节目图片加载过多，需要按需加载。</strong></li>
+</ul>
+<h5 id="1-4-2-自定义图片加载工具"><a href="#1-4-2-自定义图片加载工具" class="headerlink" title="1.4.2 自定义图片加载工具"></a>1.4.2 自定义图片加载工具</h5><p>从代码中可以找到两个自定义的图片加载工具，分别是<code>BitmapUtil</code>和<code>FrameBitmapUtil</code>，在这两个工具中加载图片环节都有一点点小问题：<strong>就是没有根据控件大小，对图片进行压缩加载，给进来的图片多大就加载多大，站在内存资源的角度上看，对于大图片加载在小控件上，属于资源浪费。</strong></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// mediax\localmusic\src\main\java\com\iflytek\autofly\localmusic\utils\BitmapUtil.java</span></span><br><span class="line"><span class="comment">// mediax\app\src\main\java\com\iflytek\autofly\mediax\utils\FrameBitmapUtil.java</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">loadBitmap</span><span class="params">(String drawableResPath)</span> </span>&#123;</span><br><span class="line">        Bitmap frameBitmap = <span class="keyword">null</span>;</span><br><span class="line">        BufferedSource bufferedSource = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">final</span> InputStream frameInputStream = ENT.I.getContext().getAssets().open(drawableResPath);</span><br><span class="line">            bufferedSource = Okio.buffer(Okio.source(frameInputStream));</span><br><span class="line">            <span class="keyword">byte</span>[] imageBytes = bufferedSource.readByteArray();</span><br><span class="line">            BitmapFactory.Options options = <span class="keyword">new</span> BitmapFactory.Options();</span><br><span class="line">            options.inSampleSize = <span class="number">1</span>;<span class="comment">// 从这两个工具类的加载图片方法中都看到直接把inSampleSize写死设置成1，不进行缩放。</span></span><br><span class="line">            <span class="keyword">if</span> (isReusableBitmap) &#123;</span><br><span class="line">                options.inJustDecodeBounds = <span class="keyword">true</span>;</span><br><span class="line">                BitmapFactory.decodeByteArray(imageBytes, <span class="number">0</span>, imageBytes.length, options);</span><br><span class="line">                options.inJustDecodeBounds = <span class="keyword">false</span>;</span><br><span class="line">                addInBitmapOptions(options);</span><br><span class="line">            &#125;</span><br><span class="line">            frameBitmap = BitmapFactory.decodeByteArray(imageBytes, <span class="number">0</span>, imageBytes.length, options);</span><br><span class="line">            <span class="keyword">if</span> (isReusableBitmap) &#123;</span><br><span class="line">                reuseBitmap(frameBitmap);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (<span class="keyword">null</span> != bufferedSource) &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    bufferedSource.close();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> frameBitmap;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>以上方法可能在我们当前项目中不会存在问题，因为当前项目给的切图都是按照需求大小给的，在供给侧已经解决了<code>大图片加载在小控件的问题</code>。但是我还是建议<strong>把这个方法做一点扩展，加上根据控件大小缩放图片的功能。</strong>代码见<code>4.2 自定义Bitmap加载类</code>。</p>
+<h3 id="2-内存溢出调查"><a href="#2-内存溢出调查" class="headerlink" title="2.内存溢出调查"></a>2.内存溢出调查</h3><h3 id="3-参考文献"><a href="#3-参考文献" class="headerlink" title="3.参考文献"></a>3.参考文献</h3><p><a href="https://github.com/lykhonis/ObjectPool">1.lykhonis/ObjectPool: Object pool for Android (github.com)</a></p>
+<p><a href="https://github.com/oujie123/BlockMonitor/commit/589b062b616fc5a2a9d34b20fb06d547146a998a">2.添加bitmap相关的操作和工具</a></p>
+<p><a href="https://developer.android.google.cn/studio/profile/memory-profiler">3.使用内存性能分析器查看应用的内存使用情况  | Android 开发者  | Android Developers (google.cn)</a></p>
+<h3 id="4-参考代码"><a href="#4-参考代码" class="headerlink" title="4.参考代码"></a>4.参考代码</h3><h4 id="4-1-对象池代码"><a href="#4-1-对象池代码" class="headerlink" title="4.1 对象池代码"></a>4.1 对象池代码</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 第一步：在需要使用对象池的地方创建一个对象池，TestBean为对象池内存放的对象</span></span><br><span class="line"><span class="comment">// 默认对象池容量为4个，不建议修改为太大的值。</span></span><br><span class="line"><span class="keyword">private</span> ObjectPool mPool = <span class="keyword">new</span> ObjectPool() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">protected</span> Object <span class="title">create</span><span class="params">(Class&lt;?&gt; type)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> TestBean();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 第二步：从对象池获取一个对象，并且使用</span></span><br><span class="line">TestBean tmp = mPool.acquire();</span><br><span class="line">tmp.setAge(<span class="number">18</span>);</span><br><span class="line">tmp.setName(<span class="string">&quot;JackOu&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 第三步：释放临时对象</span></span><br><span class="line">mPool.release(tmp);</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ObjectPool.java 对象池类代码</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> androidx.collection.SimpleArrayMap;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Object Pool is thread-safe pattern to simplify access and reuse common objects. Particular object</span></span><br><span class="line"><span class="comment"> * pool supports creation of object by using factory pattern as well as multiple type of object sets</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ObjectPool</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> POOL_INITIAL_CAPACITY = <span class="number">4</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">DefaultClass</span> </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> Class&lt;?&gt; DEFAULT_TYPE = DefaultClass.class;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">final</span> SimpleArrayMap&lt;Class&lt;?&gt;, Object[]&gt; mPool;</span><br><span class="line">    Object[] mInuse;</span><br><span class="line">    Factory mFactory;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Create empty thread-safe object pool.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">ObjectPool</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>(<span class="keyword">null</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Create empty thread-safe object pool</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> factory Factory</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">ObjectPool</span><span class="params">(Factory factory)</span> </span>&#123;</span><br><span class="line">        mFactory = factory;</span><br><span class="line">        mPool = <span class="keyword">new</span> SimpleArrayMap&lt;&gt;(POOL_INITIAL_CAPACITY);</span><br><span class="line">        mInuse = <span class="keyword">new</span> Object[POOL_INITIAL_CAPACITY];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Acquire object in pool or create new if does not exist</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> type Type of object set</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> Object from set type</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@SuppressWarnings(&quot;unchecked&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; <span class="function">T <span class="title">acquire</span><span class="params">(Class&lt;T&gt; type)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">synchronized</span> (mPool) &#123;</span><br><span class="line">            Object[] pool = mPool.get(type);</span><br><span class="line">            <span class="keyword">if</span> (pool == <span class="keyword">null</span>) &#123;</span><br><span class="line">                mPool.put(type, pool = <span class="keyword">new</span> Object[POOL_INITIAL_CAPACITY]);</span><br><span class="line">            &#125;</span><br><span class="line">            Object object = <span class="keyword">null</span>;</span><br><span class="line">            <span class="keyword">int</span> size = pool.length;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; size; i++) &#123;</span><br><span class="line">                <span class="keyword">if</span> (pool[i] != <span class="keyword">null</span>) &#123;</span><br><span class="line">                    object = pool[i];</span><br><span class="line">                    pool[i] = <span class="keyword">null</span>;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (object == <span class="keyword">null</span> &amp;&amp; (object = create(type)) == <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException(<span class="string">&quot;Create has to return non-null object!&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            size = mInuse.length;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; size; i++) &#123;</span><br><span class="line">                <span class="keyword">if</span> (mInuse[i] == <span class="keyword">null</span>) &#123;</span><br><span class="line">                    <span class="keyword">return</span> (T) (mInuse[i] = object);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            mInuse = grow(mInuse, idealObjectArraySize(size * <span class="number">2</span>));</span><br><span class="line">            <span class="keyword">return</span> (T) (mInuse[size] = object);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">inuse</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">int</span> size = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (Object object : mInuse) &#123;</span><br><span class="line">            <span class="keyword">if</span> (object != <span class="keyword">null</span>) size++;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> size;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">sizeDefault</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> size(DEFAULT_TYPE);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">size</span><span class="params">(Class&lt;?&gt; type)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">int</span> size = <span class="number">0</span>;</span><br><span class="line">        Object[] pool = mPool.get(type);</span><br><span class="line">        <span class="keyword">if</span> (pool != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">for</span> (Object object : pool) &#123;</span><br><span class="line">                <span class="keyword">if</span> (object != <span class="keyword">null</span>) size++;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> size;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Removes all objects of set type</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> type Type of object set</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">clear</span><span class="params">(Class&lt;?&gt; type)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">synchronized</span> (mPool) &#123;</span><br><span class="line">            Object[] pool = mPool.get(type);</span><br><span class="line">            <span class="keyword">if</span> (pool != <span class="keyword">null</span>) clear(pool);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Removes all objects and sets</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">clear</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">synchronized</span> (mPool) &#123;</span><br><span class="line">            <span class="keyword">int</span> size = mPool.size();</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; size; i++) &#123;</span><br><span class="line">                Object[] pool = mPool.valueAt(i);</span><br><span class="line">                <span class="keyword">if</span> (pool != <span class="keyword">null</span>) clear(pool);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Acquire object in pool or create new if does not exist</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> Object from set type</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="meta">@SuppressWarnings(&quot;unchecked&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> &lt;T&gt; <span class="function">T <span class="title">acquire</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> (T) acquire(DEFAULT_TYPE);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Release object acquired from pool back</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> object Object to release back to pool</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">release</span><span class="params">(Object object)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">synchronized</span> (mPool) &#123;</span><br><span class="line">            <span class="keyword">int</span> index = indexOf(mInuse, object);</span><br><span class="line">            <span class="keyword">if</span> (object != <span class="keyword">null</span> &amp;&amp; index &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">                mInuse[index] = <span class="keyword">null</span>;</span><br><span class="line">                Class&lt;?&gt; type = object.getClass();</span><br><span class="line">                <span class="keyword">if</span> (!mPool.containsKey(type)) type = DEFAULT_TYPE;</span><br><span class="line">                Object[] pool = mPool.get(type);</span><br><span class="line">                <span class="keyword">int</span> size = pool.length;</span><br><span class="line">                <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; size; i++) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (pool[i] == <span class="keyword">null</span>) &#123;</span><br><span class="line">                        pool[i] = object;</span><br><span class="line">                        <span class="keyword">return</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                pool = grow(pool, idealObjectArraySize(size * <span class="number">2</span>));</span><br><span class="line">                pool[size] = object;</span><br><span class="line">                mPool.put(type, pool);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Create new object for type set</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> type Type of object set</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> Non-null object</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> Object <span class="title">create</span><span class="params">(Class&lt;?&gt; type)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> mFactory == <span class="keyword">null</span> ? <span class="keyword">null</span> : mFactory.create(type);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Factory to create objects for pool</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Factory</span> </span>&#123;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * Create new object for type set</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * <span class="doctag">@param</span> type Type of object set</span></span><br><span class="line"><span class="comment">         * <span class="doctag">@return</span> Non-null object</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="function">Object <span class="title">create</span><span class="params">(Class&lt;?&gt; type)</span></span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">indexOf</span><span class="params">(Object[] array, Object object)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">int</span> size = array.length;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; size; i++) &#123;</span><br><span class="line">            <span class="keyword">if</span> (array[i] == object) <span class="keyword">return</span> i;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> -<span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">clear</span><span class="params">(Object[] array)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">int</span> size = array.length;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; size; i++) &#123;</span><br><span class="line">            array[i] = <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span> Object[] grow(Object[] array, <span class="keyword">int</span> size) &#123;</span><br><span class="line">        Object[] result = <span class="keyword">new</span> Object[size];</span><br><span class="line">        System.arraycopy(array, <span class="number">0</span>, result, <span class="number">0</span>, array.length);</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">idealObjectArraySize</span><span class="params">(<span class="keyword">int</span> need)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> idealByteArraySize(need * <span class="number">4</span>) / <span class="number">4</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">idealByteArraySize</span><span class="params">(<span class="keyword">int</span> need)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">4</span>; i &lt; <span class="number">32</span>; i++)</span><br><span class="line">            <span class="keyword">if</span> (need &lt;= (<span class="number">1</span> &lt;&lt; i) - <span class="number">12</span>)</span><br><span class="line">                <span class="keyword">return</span> (<span class="number">1</span> &lt;&lt; i) - <span class="number">12</span>;</span><br><span class="line">        <span class="keyword">return</span> need;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="4-2-自定义Bitmap加载类"><a href="#4-2-自定义Bitmap加载类" class="headerlink" title="4.2 自定义Bitmap加载类"></a>4.2 自定义Bitmap加载类</h4><p>关于bitmap相关的一些操作，详见《参考文献3.2》,仅供相互交流参考。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">BitmapLoadTool</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//======================从本地（SDcard）文件读取=======================</span></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取缩放后的本地图片</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> filePath 文件路径</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> width    宽</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> height   高</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">readBitmapFromFile</span><span class="params">(String filePath, <span class="keyword">int</span> width, <span class="keyword">int</span> height)</span> </span>&#123;</span><br><span class="line">        BitmapFactory.Options options = <span class="keyword">new</span> BitmapFactory.Options();</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">true</span>;</span><br><span class="line">        BitmapFactory.decodeFile(filePath, options);</span><br><span class="line">        <span class="keyword">float</span> srcWidth = options.outWidth;</span><br><span class="line">        <span class="keyword">float</span> srcHeight = options.outHeight;</span><br><span class="line">        <span class="keyword">int</span> inSampleSize = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">if</span> (srcHeight &gt; height || srcWidth &gt; width) &#123;</span><br><span class="line">            <span class="keyword">if</span> (srcWidth &gt; srcHeight) &#123;</span><br><span class="line">                inSampleSize = Math.round(srcHeight / height);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                inSampleSize = Math.round(srcWidth / width);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">false</span>;</span><br><span class="line">        options.inSampleSize = inSampleSize;</span><br><span class="line">        <span class="keyword">return</span> BitmapFactory.decodeFile(filePath, options);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取缩放后的本地图片</span></span><br><span class="line"><span class="comment">     * readBitmapFromFileDescriptor()效率高于readBitmapFromFile()</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> filePath 文件路径</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> width    宽</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> height   高</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">readBitmapFromFileDescriptor</span><span class="params">(String filePath, <span class="keyword">int</span> width, <span class="keyword">int</span> height)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            FileInputStream fis = <span class="keyword">new</span> FileInputStream(filePath);</span><br><span class="line">            BitmapFactory.Options options = <span class="keyword">new</span> BitmapFactory.Options();</span><br><span class="line">            options.inJustDecodeBounds = <span class="keyword">true</span>;</span><br><span class="line">            BitmapFactory.decodeFileDescriptor(fis.getFD(), <span class="keyword">null</span>, options);</span><br><span class="line">            <span class="keyword">float</span> srcWidth = options.outWidth;</span><br><span class="line">            <span class="keyword">float</span> srcHeight = options.outHeight;</span><br><span class="line">            <span class="keyword">int</span> inSampleSize = <span class="number">1</span>;</span><br><span class="line">            <span class="keyword">if</span> (srcHeight &gt; height || srcWidth &gt; width) &#123;</span><br><span class="line">                <span class="keyword">if</span> (srcWidth &gt; srcHeight) &#123;</span><br><span class="line">                    inSampleSize = Math.round(srcHeight / height);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    inSampleSize = Math.round(srcWidth / width);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            options.inJustDecodeBounds = <span class="keyword">false</span>;</span><br><span class="line">            options.inSampleSize = inSampleSize;</span><br><span class="line">            <span class="keyword">return</span> BitmapFactory.decodeFileDescriptor(fis.getFD(), <span class="keyword">null</span>,</span><br><span class="line">                    options);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception ex) &#123;</span><br><span class="line">            ex.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//======================从输入流中读取文件（网络加载）=======================</span></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取缩放后的本地图片</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> ins    输入流</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> width  宽</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> height 高</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">readBitmapFromInputStream</span><span class="params">(InputStream ins, <span class="keyword">int</span> width, <span class="keyword">int</span> height)</span> </span>&#123;</span><br><span class="line">        BitmapFactory.Options options = <span class="keyword">new</span> BitmapFactory.Options();</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">true</span>;</span><br><span class="line">        BitmapFactory.decodeStream(ins, <span class="keyword">null</span>, options);</span><br><span class="line">        <span class="keyword">float</span> srcWidth = options.outWidth;</span><br><span class="line">        <span class="keyword">float</span> srcHeight = options.outHeight;</span><br><span class="line">        <span class="keyword">int</span> inSampleSize = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">if</span> (srcHeight &gt; height || srcWidth &gt; width) &#123;</span><br><span class="line">            <span class="keyword">if</span> (srcWidth &gt; srcHeight) &#123;</span><br><span class="line">                inSampleSize = Math.round(srcHeight / height);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                inSampleSize = Math.round(srcWidth / width);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">false</span>;</span><br><span class="line">        options.inSampleSize = inSampleSize;</span><br><span class="line">        <span class="keyword">return</span> BitmapFactory.decodeStream(ins, <span class="keyword">null</span>, options);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//======================Resource资源加载=======================</span></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 使用decodeResource()相对比较消耗内存，建议用decodeStream()</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> resources</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> resourcesId</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> width</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> height</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">readBitmapFromResourceUsingDecodeResource</span><span class="params">(Resources resources, <span class="keyword">int</span> resourcesId, <span class="keyword">int</span> width, <span class="keyword">int</span> height)</span> </span>&#123;</span><br><span class="line">        BitmapFactory.Options options = <span class="keyword">new</span> BitmapFactory.Options();</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">true</span>;</span><br><span class="line">        BitmapFactory.decodeResource(resources, resourcesId, options);</span><br><span class="line">        <span class="keyword">float</span> srcWidth = options.outWidth;</span><br><span class="line">        <span class="keyword">float</span> srcHeight = options.outHeight;</span><br><span class="line">        <span class="keyword">int</span> inSampleSize = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">if</span> (srcHeight &gt; height || srcWidth &gt; width) &#123;</span><br><span class="line">            <span class="keyword">if</span> (srcWidth &gt; srcHeight) &#123;</span><br><span class="line">                inSampleSize = Math.round(srcHeight / height);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                inSampleSize = Math.round(srcWidth / width);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">false</span>;</span><br><span class="line">        options.inSampleSize = inSampleSize;</span><br><span class="line">        <span class="keyword">return</span> BitmapFactory.decodeResource(resources, resourcesId, options);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">readBitmapFromResourceUsingDecodeStream</span><span class="params">(Resources resources, <span class="keyword">int</span></span></span></span><br><span class="line"><span class="function"><span class="params">            resourcesId, <span class="keyword">int</span> width, <span class="keyword">int</span> height)</span> </span>&#123;</span><br><span class="line">        InputStream ins = resources.openRawResource(resourcesId);</span><br><span class="line">        BitmapFactory.Options options = <span class="keyword">new</span> BitmapFactory.Options();</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">true</span>;</span><br><span class="line">        BitmapFactory.decodeStream(ins, <span class="keyword">null</span>, options);</span><br><span class="line">        <span class="keyword">float</span> srcWidth = options.outWidth;</span><br><span class="line">        <span class="keyword">float</span> srcHeight = options.outHeight;</span><br><span class="line">        <span class="keyword">int</span> inSampleSize = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">if</span> (srcHeight &gt; height || srcWidth &gt; width) &#123;</span><br><span class="line">            <span class="keyword">if</span> (srcWidth &gt; srcHeight) &#123;</span><br><span class="line">                inSampleSize = Math.round(srcHeight / height);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                inSampleSize = Math.round(srcWidth / width);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">false</span>;</span><br><span class="line">        options.inSampleSize = inSampleSize;</span><br><span class="line">        <span class="keyword">return</span> BitmapFactory.decodeStream(ins, <span class="keyword">null</span>, options);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//======================Assets资源加载方式=======================</span></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取缩放后的本地图片</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> filePath 文件路径,即文件名称</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">readBitmapFromAssetsFile</span><span class="params">(Context context, String</span></span></span><br><span class="line"><span class="function"><span class="params">            filePath)</span> </span>&#123;</span><br><span class="line">        Bitmap image = <span class="keyword">null</span>;</span><br><span class="line">        AssetManager am = context.getResources().getAssets();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            InputStream is = am.open(filePath);</span><br><span class="line">            image = BitmapFactory.decodeStream(is);</span><br><span class="line">            is.close();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> image;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//======================从二进制数据读取图片=======================</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Bitmap <span class="title">readBitmapFromByteArray</span><span class="params">(<span class="keyword">byte</span>[] data, <span class="keyword">int</span> width, <span class="keyword">int</span> height)</span> </span>&#123;</span><br><span class="line">        BitmapFactory.Options options = <span class="keyword">new</span> BitmapFactory.Options();</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">true</span>;</span><br><span class="line">        BitmapFactory.decodeByteArray(data, <span class="number">0</span>, data.length, options);</span><br><span class="line">        <span class="keyword">float</span> srcWidth = options.outWidth;</span><br><span class="line">        <span class="keyword">float</span> srcHeight = options.outHeight;</span><br><span class="line">        <span class="keyword">int</span> inSampleSize = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">if</span> (srcHeight &gt; height || srcWidth &gt; width) &#123;</span><br><span class="line">            <span class="keyword">if</span> (srcWidth &gt; srcHeight) &#123;</span><br><span class="line">                inSampleSize = Math.round(srcHeight / height);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                inSampleSize = Math.round(srcWidth / width);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        options.inJustDecodeBounds = <span class="keyword">false</span>;</span><br><span class="line">        options.inSampleSize = inSampleSize;</span><br><span class="line">        <span class="keyword">return</span> BitmapFactory.decodeByteArray(data, <span class="number">0</span>, data.length, options);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>Android</tag>
+        <tag>系统优化</tag>
+        <tag>内存优化</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>GOS项目整体应用性能问题</title>
+    <url>/2021/10/20/GOS%E9%A1%B9%E7%9B%AE%E6%95%B4%E4%BD%93%E5%BA%94%E7%94%A8%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98/</url>
+    <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a><strong>目录</strong></h4><p>0.声明</p>
+<p>1.背景</p>
+<p>2.内存监控数据分析</p>
+<p>3.车机内存性能问题总结</p>
+<p>4.优化建议</p>
+<p>5.参考文献</p>
+<h3 id="0-声明"><a href="#0-声明" class="headerlink" title="0.声明"></a>0.声明</h3><p><strong>说明：</strong></p>
+<ul>
+<li>测试场景：测试同学正常测试各个功能，采集周期起始点并非重新开机。</li>
+<li>以下监控的性能数据是测试2750个采集周期，每个采集周期10s，7.64小时的数据。</li>
+<li>内存图横坐标是采集周期，单位：个；纵坐标是内存占用，单位：M</li>
+<li>CPU图横坐标是采集周期，单位：个；纵坐标是CPU占用，单位：%</li>
+<li>View图横坐标是采集周期，单位：个；纵坐标是当次采集界面中view的个数，单位：个</li>
+<li>可用内存图横坐标是采集周期，单位：个；纵坐标是当前系统可用内存，单位：kb</li>
+</ul>
+<h3 id="1-背景"><a href="#1-背景" class="headerlink" title="1.背景"></a>1.背景</h3><p>在以上测试周期日志中，发现有一次lowmemorykiller（LMK）杀进程的记录，通过杀oom_score_adj为906的进程来回收了约300M内存。从此项指标可以看出我们当前的系统长时间运行过程之后，会导致可用内存越来越少，最后触发LMK来回收内存资源。因此，此报告主要分析当前项目中各个应用暴露出来的内存问题。</p>
+<p><img src="https://img-blog.csdnimg.cn/b09b45853f45406fa4e4b7ab79982c3b.png#pic_center" alt="lmk杀进程"></p>
+<h3 id="2-内存监控数据分析"><a href="#2-内存监控数据分析" class="headerlink" title="2.内存监控数据分析"></a>2.内存监控数据分析</h3><h4 id="2-1-车机整体内存情况"><a href="#2-1-车机整体内存情况" class="headerlink" title="2.1 车机整体内存情况"></a>2.1 车机整体内存情况</h4><h5 id="2-1-1-系统总体可用内存"><a href="#2-1-1-系统总体可用内存" class="headerlink" title="2.1.1 系统总体可用内存"></a>2.1.1 系统总体可用内存</h5><p><img src="https://img-blog.csdnimg.cn/5cdcbabab87041c9b6bd09038fab56a2.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_17,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="系统总共可用内存"></p>
+<p>系统总体可用物理内存：<strong>5754876kb ≈ 5.49G</strong></p>
+<h5 id="2-1-2-系统总体可用剩余物理内存"><a href="#2-1-2-系统总体可用剩余物理内存" class="headerlink" title="2.1.2 系统总体可用剩余物理内存"></a>2.1.2 系统总体可用剩余物理内存</h5><p><img src="https://img-blog.csdnimg.cn/d288d415deab4bbea0153915a5085f65.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="系统可用内存"></p>
+<ul>
+<li><p>采集周期起始点所剩内存：2718080kb ≈ 2.59G</p>
+</li>
+<li><p>采集周期内最低所剩内存：724644 ≈ 690M</p>
+<p> (说明：此值是LMK回收后的所剩内存值。当系统内存少于315M时，系统就会自动把<code>/proc/&lt;pid&gt;/oom_score_adj</code>中oom_score_adj的值大于900，少于1000的进程杀掉)</p>
+</li>
+<li><p>从图中可以看出可用内存<strong>在监控周期内持续降低</strong>，出现这种情况有两个原因：</p>
+<ul>
+<li>一是启动了新应用，重新分配了内存导致可用内存下降。</li>
+<li>二是应用<strong>内存泄露</strong>，导致内存持续无法回收。初步判断可用内存持续降低会和内存泄露有关系，因为当前项目几乎全部应用都使用了平台签名，属于系统应用，oom_adj值比较低，正常情况下，所剩内存低于126M才会触发杀这些进程。所以可以近似认为系统应用进程是保活的，所以初步断定可用内存持续下降和应用内存泄露，内存持续无法被回收有关系。</li>
+</ul>
+</li>
+<li><p>从图中可以看出可用内存在<strong>一些时刻有突然陡降的现象</strong>，出现这种情况有两种可能：</p>
+<ul>
+<li>一是某些应用启动加载过多资源，导致内存在短时间内消耗过多，建议应用用时再初始化加载资源。</li>
+<li>二是有进程崩溃或者被杀掉，释放出部分内存。</li>
+</ul>
+</li>
+</ul>
+<h5 id="2-1-3-系统活跃-非活跃内存"><a href="#2-1-3-系统活跃-非活跃内存" class="headerlink" title="2.1.3 系统活跃/非活跃内存"></a>2.1.3 系统活跃/非活跃内存</h5><blockquote>
+<p>Active : 最近使用的内存量，除非绝对必要，否则通常不会回收(以kb为单位)。</p>
+<p>Inactive : 最近使用较少且更有资格回收用于其他目的的内存量(以kb为单位)。</p>
+<p>ActiveFile: 自上次系统回收内存以来，处于活动使用状态或处于活动使用状态的文件缓存内存量（以kb为单位）</p>
+<p>InactiveFile：从磁盘新加载的文件缓存内存量，或者是要回收的候选文件缓存内存量。（以kb为单位）</p>
+</blockquote>
+<p><strong>2.1.3.1 Active图</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/ba74213068824c7aa938db3519062ed0.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="系统总共Active内存"></p>
+<p>从Active内存图可以看出系统所有进程在整个监控周期内平均消耗：3571792kb ≈ 3.41G，总共可用内存5.49G，平均使用率：<strong>62%</strong></p>
+<p><strong>2.1.3.2 Inactive 图</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/d93c57884fc44b1c8a107f78d44599d6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="系统总共Inactive内存"></p>
+<p>从Inactive图中可以看出系统在监控周期内空闲的内存大小平均为：492299kb ≈ 469M，空闲内存率：8.5%，此参数说明系统在特别需要内存的时候可以分配的内存。</p>
+<p><strong>2.1.3.3 Active file图</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c71327a864e94da486f3a45eca91ae99.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="ActiveFile图"></p>
+<p>从Active file图中可以看出系统在监控周期内,系统回收后剩余的内存越来越少，并且存在比较大的抖动。</p>
+<p>缓存活跃文件内存最大：815492kb ≈ 778M；最小：105736kb ≈ 100.8M；平均：429188kb ≈ 409.3M。可以看出在整个监控周期内，系统在持续压缩缓存文件的大小，并且期间存在进程崩溃情况。</p>
+<p><strong>2.1.3.4 InActive file图</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/81d0c099177341378e5f193b6b46a756.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="InactiveFile图"></p>
+<p>从Inactive file图中可以看出系统中在前期有1626812kb ≈ 1.55G <strong>从磁盘新加载的文件缓存内存量，或者有待系统回收的内存！</strong>此处需要调查哪些应用启动会加载过多过大文件到内存。</p>
+<h4 id="2-2-应用内存消耗分析"><a href="#2-2-应用内存消耗分析" class="headerlink" title="2.2 应用内存消耗分析"></a>2.2 应用内存消耗分析</h4><h5 id="2-2-1-内存优化方向与目标"><a href="#2-2-1-内存优化方向与目标" class="headerlink" title="2.2.1 内存优化方向与目标"></a>2.2.1 内存优化方向与目标</h5><p>应用内存优化目标有四个方向：</p>
+<ul>
+<li>无内存泄露</li>
+<li>无内存抖动，小范围内存抖动可接受</li>
+<li>不存在阶梯内存(稳定性)</li>
+<li>降低内存消耗</li>
+</ul>
+<p>下面给出<strong>GOS一期</strong>应用内存监控结果，作为优化目标方向。</p>
+<p>以下是腾讯系应用内存占用情况：</p>
+<p><img src="https://img-blog.csdnimg.cn/a364a7d743794ff8977441b0725fee25.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯语音"></p>
+<p><img src="https://img-blog.csdnimg.cn/9937482b44194b11b6debcee5b3e9145.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯新闻"></p>
+<p><img src="https://img-blog.csdnimg.cn/03b6321a25eb40479f50a829a69b4f34.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯地图"></p>
+<p><img src="https://img-blog.csdnimg.cn/d8e3de4cb621407495ab105f56643319.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯基础库"></p>
+<p><img src="https://img-blog.csdnimg.cn/58ba2d080ec349dc8250f1e2d852f6f6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="腾讯音乐"></p>
+<p>以下是高德系内存占用情况：</p>
+<p><img src="https://img-blog.csdnimg.cn/61ef853e8e344172bdc9493cf85544e5.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="高德地图"></p>
+<p><img src="https://img-blog.csdnimg.cn/58a8c389b9504ec0ad430439318245eb.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="高德定位服务"></p>
+<p>以下是中科创达系内存占用情况：</p>
+<p><img src="https://img-blog.csdnimg.cn/278893264da143fe90c5d55e0b327d89.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="智联助手"></p>
+<p><img src="https://img-blog.csdnimg.cn/afe6a55d63cd499bb485374c03b7fc53.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="倒车"></p>
+<p><img src="https://img-blog.csdnimg.cn/098f44976dde439d8cba2d3e9d0512bc.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="语音适配器"></p>
+<p><img src="https://img-blog.csdnimg.cn/37ef56c941914731aa3fa8d50ad98729.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="USB升级"></p>
+<p><strong>小结:</strong></p>
+<p>从上面图中可以看出在监控期间，腾讯系的应用内存最稳定，高德和创达的应用存在小幅波动，在可接受范围内。三家公司的应用总体内存消耗都比较低。</p>
+<h5 id="2-2-2-当前应用内存消耗现状"><a href="#2-2-2-当前应用内存消耗现状" class="headerlink" title="2.2.2 当前应用内存消耗现状"></a>2.2.2 当前应用内存消耗现状</h5><p><strong>2.2.2.1 语音助理</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/a9beca6943244d23a8fd65bb4f208c13.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2语音助理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>436M</td>
+<td>356M</td>
+<td>390M</td>
+<td>存在</td>
+<td>少量</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>降低内存使用</li>
+<li>增加对象复用，减少内存抖动</li>
+</ul>
+<p><strong>2.2.2.2 媒体</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/3e3e09daae654da2bbe588036c7cc24a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2媒体"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>383M</td>
+<td>145M</td>
+<td>295M</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>控制对象创建个数，建立对象池实现对象复用</li>
+<li>调查不能释放的内存</li>
+<li>资源按需加载、调查加载占用大内存的资源原因，bitmap对象是否按空间尺寸压缩加载，预置图片资源放在适合屏幕尺寸的目录中。</li>
+<li>看过之前卡顿分析报告，内存暂用大主要还是存在加载缓存bitmap过多所致。</li>
+</ul>
+<p><strong>2.2.2.3 主屏Launcher</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/309b3a2a911244f29537e1f0fc38c253.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Launcher"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>432M</td>
+<td>118M</td>
+<td>282M</td>
+<td>存在</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>出现阶梯内存，需要<strong>单独跑monkey</strong>调查崩溃原因，保证稳定性</li>
+<li>存在内存抖动需要调查对象分配和复用情况</li>
+</ul>
+<p><strong>2.2.2.4 Avatar</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/79f72a18c6af4e2d94d210b1275cdb43.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Avatar"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>609M</td>
+<td>33M</td>
+<td>242M</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在<strong>严重内存泄露</strong>，调查不能释放的对象</li>
+<li>每次加载对象都在<strong>50-100M</strong>，需要调查为什么一次性需要加载那么多资源，bitmap对象是否按空间尺寸压缩加载</li>
+</ul>
+<p><strong>2.2.2.5 讯飞输入法</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/a658643fdb9c41148d48627bf9b2c67c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2输入法"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>229M</td>
+<td>194M</td>
+<td>211M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查部分对象创建使用完了就被回收的原因，建议对象复用减少内存抖动</li>
+<li>是否可以减少部分资源的加载，输入法应用总体暂用内存比较高</li>
+</ul>
+<p><strong>2.2.2.6 系统设置</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/61b588b840c54a4f9f3cf889db8893d1.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2设置"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>330M</td>
+<td>47M</td>
+<td>155M</td>
+<td>少量</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在<strong>严重内存泄露</strong>，调查不能释放的对象</li>
+<li>有部分<strong>分配大内存</strong>迹象需要调查</li>
+</ul>
+<p><strong>2.2.2.7 车辆设置</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/0c953d2976c34df39b9be28843c6a4ee.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="车辆设置"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>178M</td>
+<td>34M</td>
+<td>121M</td>
+<td>少量</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在<strong>严重内存泄露</strong>，调查不能释放的对象</li>
+<li>有部分<strong>分配大内存</strong>迹象需要调查</li>
+</ul>
+<p><strong>2.2.2.8 空调</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/a3c7f95f05c64b91a3f039d4db3bc658.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2空调"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>185M</td>
+<td>99M</td>
+<td>106M</td>
+<td>否</td>
+<td>否</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查开始阶段是否crash了，需要单独monkey测试稳定性</li>
+</ul>
+<p><strong>2.2.2.9 空调服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/2f42082249fb4866a5d1dee52de0ea54.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2空调服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>94M</td>
+<td>85M</td>
+<td>86M</td>
+<td>否</td>
+<td>否</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查部分分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.10 SystemUi</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/fb336774fa224293b486f8a374194939.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2SystemUi"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>93M</td>
+<td>65M</td>
+<td>78M</td>
+<td>少量</td>
+<td>否</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>监控前期出现内存陡增情况，需要调查原因</li>
+</ul>
+<p><strong>2.2.2.11 账号</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/15fa6f1095434149be82f1bf583c06cb.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2账号"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>121M</td>
+<td>14M</td>
+<td>56M</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在内存抖动需要调查内存复用</li>
+<li>从两端内存图可以看出有内存泄露情况</li>
+<li>出现严重阶梯，需要单独monkey测试稳定性</li>
+</ul>
+<p><strong>2.2.2.12 AVDC</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/323e9499f603455e96729ac5bd57d3a9.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2AVDC"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>61M</td>
+<td>36M</td>
+<td>43M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要单独monkey调查该应用稳定性</li>
+</ul>
+<p><strong>2.2.2.13 DVR</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/f6e18b4b51b84a5da4c1627035745ba1.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2DVR"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>55M</td>
+<td>21M</td>
+<td>40M</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查对象分配和回收，尽量对象复用</li>
+<li>存在<strong>严重内存泄露</strong>，调查不能释放的对象</li>
+</ul>
+<p><strong>2.2.2.14 副屏launcher</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c78534814ffc4f3c957251816c91613a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2副屏Launcher"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>41M</td>
+<td>32M</td>
+<td>33M</td>
+<td>少量</td>
+<td>否</td>
+<td>否</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查局部出现大对象分配场景</li>
+</ul>
+<p><strong>2.2.2.15 btcall</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/6fc1bb839dbb41619da229216244508c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2btcall"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>32M</td>
+<td>23M</td>
+<td>30M</td>
+<td>否</td>
+<td>否</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查早期内存阶梯上升原因，如果因为启动应用，可以忽略。</li>
+</ul>
+<p><strong>2.2.2.16 场景引擎</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/cb3127db15bd4c35a53ea03947c1b292.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2场景引擎"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>38M</td>
+<td>16M</td>
+<td>29M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象分配场景</li>
+<li>对于常用的对象采用对象复用机制</li>
+</ul>
+<p><strong>2.2.2.17 schedule</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/a5db1e8b23b44f3c9a7de1c7dc885338.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2日程"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>39M</td>
+<td>14M</td>
+<td>29M</td>
+<td>少量</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查出现阶梯内存原因是进程被杀还是分配了大对象，从上图看，更像进程被杀的现象，建议先单独跑monkey查看稳定性</li>
+</ul>
+<p><strong>2.2.2.18 媒体子进程</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/ea5a30d22f1b41deb5be25083010530b.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2媒体子进程"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>50M</td>
+<td>10M</td>
+<td>28M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查是否有大资源加载，中间有加载了又被回收的表象，建议按需加载资源</li>
+</ul>
+<p><strong>2.2.2.19 GCS</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/2128ab65759949a7bf3698544b3df4a4.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2GCS"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>40M</td>
+<td>14M</td>
+<td>28M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>数据埋点模块加载数据上报的对象是否可以复用</li>
+<li>账号模块的Bean对象是否可以复用</li>
+<li>调查大对象创建和回收时机，尽量复用对象。</li>
+</ul>
+<p><strong>2.2.2.20 消息中心</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/a8c1b25fd76c406aaacfae761aada4f5.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2消息中心"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>58M</td>
+<td>17M</td>
+<td>27M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象创建情况，实现对象复用机制</li>
+</ul>
+<p><strong>2.2.2.21 讯飞账号中心</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/795ab0f2fc6c466aa2931f1d245c1f5b.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2账号中心"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>35M</td>
+<td>11M</td>
+<td>24M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li><p>调查大对象分配与释放场景</p>
+</li>
+<li><p>复用内存减少内存抖动</p>
+</li>
+</ul>
+<p><strong>2.2.2.22 讯飞SystemServer</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c952e6c34dc8493497a593cbaeeea062.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2讯飞SystemServer"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>37M</td>
+<td>16M</td>
+<td>22M</td>
+<td>少量</td>
+<td>少量</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象创建场景是否在循环中创建对象，此对象是否可以new一个复用。</li>
+</ul>
+<p><strong>2.2.2.23 讯飞aiangela</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/3e7b4824a81642948b87766838e37f0c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2讯飞Aianglela"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>25M</td>
+<td>7M</td>
+<td>17M</td>
+<td>少量</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>单独跑monkey,检测应用稳定性</li>
+</ul>
+<p><strong>2.2.2.24 扩展service</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/e48ec4bec7bd4636a7c44d27f9efc94a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2扩展服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>30M</td>
+<td>12M</td>
+<td>17M</td>
+<td>存在</td>
+<td>不存在</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象创建场景</li>
+</ul>
+<p><strong>2.2.2.25 carplay</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/abaf0252160346eb8cc3588b957c29c0.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarPlay"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>22M</td>
+<td>13M</td>
+<td>16M</td>
+<td>少量可以接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.26 hardkey</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/18a7e4b1969f4a0f8e59bc6fb5c6e6e2.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2硬按键"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>8M</td>
+<td>15M</td>
+<td>少量可接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查监控前期突然升高是否是启动服务，如果是可以暂时不优化。</li>
+</ul>
+<p><strong>2.2.2.27 讯飞平台服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/b53b0d421911491cadb781b89726fe14.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2平台适配器"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>8M</td>
+<td>15M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查监控前期突然升高是否是启动服务，如果是可以暂时不优化。</li>
+</ul>
+<p><strong>2.2.2.28 账号服务端</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/9c7c580a68cb40328b52ef93832f401b.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2账号服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>22M</td>
+<td>11M</td>
+<td>15M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.29 媒体中心服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/3966b395856343bf87555a9f75a06aa7.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2媒体中心服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>15M</td>
+<td>少量</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在少量内存突然抖动场景，需要调查一下发生场景</li>
+<li>内存图后半部分出现阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.30 Power</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/3c7adb43a588413e826aa4ee29ddf529.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarPower"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>10M</td>
+<td>15M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到大量阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.31 screensaver</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/95c21b89c05b4c9aa9a289babf78f6c4.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2屏保"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>9M</td>
+<td>15M</td>
+<td>少量</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.32 Car.hvac</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/a9faa6402f2a4b18aa075171f68c7b1e.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Car空调"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>16M</td>
+<td>8M</td>
+<td>14M</td>
+<td>少量可接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.33 platformservice.Services</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/2e19ff7bb34b45b3b1e01b0e6c37b016.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2平台服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>23M</td>
+<td>11M</td>
+<td>14M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查是稳定性还是在某些场景创建了大对象。</li>
+</ul>
+<p><strong>2.2.2.34 miniprogram</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/f76a70d257bf486a8fd4f953a0d156c6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2小程序"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>79M</td>
+<td>10M</td>
+<td>13M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p>2.2.2.35 caradapter </p>
+<p><img src="https://img-blog.csdnimg.cn/5df09633c03a4535902e22f46f38fa8f.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarAdapter"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>19M</td>
+<td>10M</td>
+<td>13M</td>
+<td>少量可接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+<li>调查某些场面分配大对象</li>
+</ul>
+<p><strong>2.2.2.36 externalkey</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/52f8bb7be12f4834b0f40d7b2a5452fe.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2扩展按键"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>9M</td>
+<td>13M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.37 procmanagement</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/ded982d08e2a401db16c17d36111b265.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2进程管理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>8M</td>
+<td>13M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p>2.2.2.38 原生CAR</p>
+<p><img src="https://img-blog.csdnimg.cn/78c3e4e6d5d343f8baf8133eac75e2e3.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Car"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>21M</td>
+<td>11M</td>
+<td>13M</td>
+<td>少量</td>
+<td>少量可接受</td>
+<td>暂无</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查分配大对象场景</li>
+</ul>
+<p><strong>2.2.2.39 设置服务端</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/17af6e95e7424a54b784db3ae65c732c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2设置服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>13M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.40 carlife</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/a92196692b914d2790f1bf6a0472ff13.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Carlife"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>12M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.41 engineMode</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/13bb1c8095894d60be1c4ed458d7e7c6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2能量管理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>10M</td>
+<td>12M</td>
+<td>暂无</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.42 氛围灯</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/6e90c8fe79e646e4ae5c8ba681f6716d.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2氛围灯"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>9M</td>
+<td>12M</td>
+<td>少量可接受</td>
+<td>少量可接受</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.43 devicemanager</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/fac7fe9ecb324d0ebcddaf6cc1992339.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2设备管理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>10M</td>
+<td>11M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+<li>调查部分场景分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.44 adaptermainservice</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/ddad4a710c424d57b0f055b35857ab25.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2平台适配器old"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>暂无</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查部分场景分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.45 vpamultimode</strong> </p>
+<p><img src="https://img-blog.csdnimg.cn/dbc7bd55cf3d4d6f90bd1850d17581b2.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2VPA"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>9M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+<li>调查部分场景分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.46 消息中心服务端</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/58f6fd19570f4957bce0de8da5fe1551.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2消息中心服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>18M</td>
+<td>9M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+<li>调查部分场景分配大内存情况</li>
+</ul>
+<p><strong>2.2.2.47 时钟同步</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/0c9f93e20d264c0f9967da0e3f40904d.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2时钟同步"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>16M</td>
+<td>8M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.48 德赛ftpserver</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/6c4dfc01ac05474e99634fef16ab44c6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2德赛ftpserver"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>14M</td>
+<td>6M</td>
+<td>11M</td>
+<td>存在</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性（已经提单稳定性问题）</li>
+</ul>
+<p><strong>2.2.2.49 防火墙</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/5ca53abf53a6464dbe08b2f33d00c9b5.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2防火墙"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>13M</td>
+<td>4M</td>
+<td>11M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查图中前期的阶梯是否在启动服务</li>
+</ul>
+<p><strong>2.2.2.50 权限管理服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/ccb1bd38bb8543388b03184dfd4db339.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2权限管理服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12M</td>
+<td>5M</td>
+<td>11M</td>
+<td>少量可接受</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查图中前期的阶梯是否在启动服务</li>
+</ul>
+<p><strong>2.2.2.51 蓝牙服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/5297b10570eb4a4ab839f1cc86563e2c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2蓝牙服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>15M</td>
+<td>7M</td>
+<td>10M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.52 CarAudio</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/f33d59c0fafc411089239727962ff970.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarAudio"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>13M</td>
+<td>5M</td>
+<td>10M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.53 CarScene</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/20e7ad6c67bc4fdbba72a1a7faafb65a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarScene"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>14M</td>
+<td>4M</td>
+<td>10M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.54 Wifi服务端</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/dc92721d382a430bb9756e2f87daf0f6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Wifi服务端"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12M</td>
+<td>4M</td>
+<td>10M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.55  CarService</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c7882a61e6a54bf9907f81aeba917102.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarService"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>17M</td>
+<td>7M</td>
+<td>9M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.56 DMS</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/e97dda755ffa4065a779272c82519f4f.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2DMS"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>14M</td>
+<td>6M</td>
+<td>9M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.57 GCS证书管理</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/e66e55097bd24b0d9a5364d651715bb4.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2GCS证书管理"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>13M</td>
+<td>5M</td>
+<td>8M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>不上此部分代码，此部分功能由pkisdk完成</li>
+</ul>
+<p><strong>2.2.2.58 CarMessager</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/20bd7ec3ecc4468a85ce805cdfdddf06.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarMessager"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>11M</td>
+<td>3M</td>
+<td>8M</td>
+<td>暂无</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.59 仪表服务</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/2a2ce4f7c0734534bf6e3e2593bc9506.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2仪表服务"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>15M</td>
+<td>4M</td>
+<td>8M</td>
+<td>存在</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象申请情况，实现对象复用</li>
+</ul>
+<p><strong>2.2.2.60 CarNcm</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/32d946368560430287d0bc96394ad82c.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2CarNcm"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12M</td>
+<td>3M</td>
+<td>7M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.61 德赛QnxApp</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/855daf404c3841a496f59fab2c81d0e3.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2QnxApp"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>12M</td>
+<td>4M</td>
+<td>7M</td>
+<td>少量</td>
+<td>暂无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>图中看到存在阶梯内存，需要单独跑monkey验证稳定性</li>
+</ul>
+<p><strong>2.2.2.62 讯飞applist</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/53ca4401ca4140cdb5897da5170501d6.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2讯飞applist"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>48M</td>
+<td>0M</td>
+<td>4M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查该应用实现什么功能，是否可以合并到其他应用中。疑似此进程用完就被杀了</li>
+</ul>
+<p><strong>2.2.2.63 商城</strong></p>
+<p><img src="https://img-blog.csdnimg.cn/c886df8dd0cc4e3e941f3e263acae52e.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBASmFja091MTExMA==,size_13,color_FFFFFF,t_70,g_se,x_16#pic_center" alt="GOS2Mall"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动状态</th>
+<th>是否内存泄露</th>
+<th>是否阶梯内存</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>41M</td>
+<td>0M</td>
+<td>3M</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>需要调查该应用实现什么功能，是否可以合并到其他应用中。疑似此进程用完就被杀了</li>
+</ul>
+<h3 id="3-车机内存性能问题总结"><a href="#3-车机内存性能问题总结" class="headerlink" title="3 车机内存性能问题总结"></a>3 车机内存性能问题总结</h3><p>从以上系统整体性能与各应用内存性能分析可以发现如下几个问题：</p>
+<ul>
+<li>系统总体内存在随车机运行时间加长，剩余内存逐步降低，最后触发了LMK杀进程机制</li>
+<li>大部分应用内存存在内存抖动</li>
+<li>大部分应用内存存在内存泄露</li>
+<li>部分应用存在阶梯内存，存在稳定性问题</li>
+<li>部分应用存在大内存分配情况</li>
+<li>部分应用自身总体内存占用比较高</li>
+</ul>
+<h3 id="4-优化建议"><a href="#4-优化建议" class="headerlink" title="4.优化建议"></a>4.优化建议</h3><p>针对以上问题，请各FO参考自身应用内存图情况，选择对应的工具进行调查，修复内存问题。针对不同问题，监控调查工具建议如下：</p>
+<ul>
+<li><p>针对有界面的应用可以使用LeakCanary，动态检测应用是否由内存泄露</p>
+<figure class="highlight groovy"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 在build.gradle中添加以下依赖即可，也可以看看参考文献3和4</span></span><br><span class="line">dependencies &#123;</span><br><span class="line">  <span class="comment">// debugImplementation because LeakCanary should only run in debug builds.</span></span><br><span class="line">  debugImplementation <span class="string">&#x27;com.squareup.leakcanary:leakcanary-android:2.7&#x27;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>针对内存抖动和大内存分配调查，可以使用Android Studio的Profile中memory模块来检测。使用方法见<strong>参考文献5</strong></p>
+</li>
+<li><p>针对服务和LeakCanary检测不出来的，可以使用MAT（Memory Analyzer Tools, MAT）,工具下载见<strong>参考文献6</strong></p>
+</li>
+<li><p>针对阶梯内存，存在稳定性情况，可以使用monkey, 晚上针对单个应用跑monkey</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> -p参数后面填入自己应用的包名</span></span><br><span class="line">monkey -p com.timanetwork.appstore --throttle 500 --bugreport --hprof --ignore-crashes --ignore-timeouts --ignore-security-exceptions --ignore-native-crashes --monitor-native-crashes -v -v -v 300000 1 &gt;&gt; /mnt/sdcard/Stability_base_20211023.log 2&gt;&gt; /mnt/sdcard/Stability_base_err_20211023.log &amp;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h4 id="参考文献："><a href="#参考文献：" class="headerlink" title="参考文献："></a>参考文献：</h4><p><a href="https://stackoverflow.com/questions/45487506/what-is-inactivefile-and-activefile-in-proc-meminfo">1. linux - what is Inactive(file) and Active(file) in /proc/meminfo? - Stack Overflow</a></p>
+<p><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/deployment_guide/s2-proc-meminfo">2. /PROC/MEMINFO description</a></p>
+<p><a href="https://square.github.io/leakcanary/getting_started/">3.Getting Started - LeakCanary (square.github.io)</a></p>
+<p><a href="https://github.com/square/leakcanary">4.square/leakcanary: A memory leak detection library for Android. (github.com)</a></p>
+<p><a href="https://developer.android.google.cn/studio/profile/memory-profiler">5.使用内存性能分析器查看应用的内存使用情况  | Android 开发者  | Android Developers (google.cn)</a></p>
+<p><a href="http://www.eclipse.org/mat/downloads.php">6.Eclipse Memory Analyzer Open Source Project | The Eclipse Foundation</a></p>
+]]></content>
+      <categories>
+        <category>Android</category>
+      </categories>
+      <tags>
+        <tag>Android</tag>
+        <tag>系统优化</tag>
+        <tag>整体性能分析</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Pycharm激活方法</title>
+    <url>/2021/10/22/Pycharm%E6%BF%80%E6%B4%BB%E6%96%B9%E6%B3%95/</url>
+    <content><![CDATA[<h4 id="1-现状"><a href="#1-现状" class="headerlink" title="1.现状"></a>1.现状</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-225902394d9aedc5.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="现状.jpg"></p>
+<h4 id="2-先使用激活码进入软件"><a href="#2-先使用激活码进入软件" class="headerlink" title="2.先使用激活码进入软件"></a>2.先使用激活码进入软件</h4><figure class="highlight text"><table><tr><td class="code"><pre><span class="line">9H1390TRAK-eyJsaWNlbnNlSWQiOiI5SDEzOTBUUkFLIiwibGljZW5zZWVOYW1lIjoi5rC45LmF5r+A5rS7IHd3d8K3YWppaHVvwrdjb20iLCJhc3NpZ25lZU5hbWUiOiIiLCJhc3NpZ25lZUVtYWlsIjoiIiwibGljZW5zZVJlc3RyaWN0aW9uIjoiIiwiY2hlY2tDb25jdXJyZW50VXNlIjpmYWxzZSwicHJvZHVjdHMiOlt7ImNvZGUiOiJEUE4iLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6ZmFsc2V9LHsiY29kZSI6IkRCIiwicGFpZFVwVG8iOiIyMDIxLTExLTIxIiwiZXh0ZW5kZWQiOmZhbHNlfSx7ImNvZGUiOiJQUyIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjpmYWxzZX0seyJjb2RlIjoiSUkiLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6ZmFsc2V9LHsiY29kZSI6IlJTQyIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjp0cnVlfSx7ImNvZGUiOiJHTyIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjpmYWxzZX0seyJjb2RlIjoiRE0iLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6ZmFsc2V9LHsiY29kZSI6IlJTRiIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjp0cnVlfSx7ImNvZGUiOiJQQyIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjpmYWxzZX0seyJjb2RlIjoiUkMiLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6ZmFsc2V9LHsiY29kZSI6IkNMIiwicGFpZFVwVG8iOiIyMDIxLTExLTIxIiwiZXh0ZW5kZWQiOmZhbHNlfSx7ImNvZGUiOiJXUyIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjpmYWxzZX0seyJjb2RlIjoiUkQiLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6ZmFsc2V9LHsiY29kZSI6IlJTMCIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjpmYWxzZX0seyJjb2RlIjoiUk0iLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6ZmFsc2V9LHsiY29kZSI6IkFDIiwicGFpZFVwVG8iOiIyMDIxLTExLTIxIiwiZXh0ZW5kZWQiOmZhbHNlfSx7ImNvZGUiOiJSU1YiLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6dHJ1ZX0seyJjb2RlIjoiREMiLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6ZmFsc2V9LHsiY29kZSI6IlJTVSIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjpmYWxzZX0seyJjb2RlIjoiRFAiLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6dHJ1ZX0seyJjb2RlIjoiUERCIiwicGFpZFVwVG8iOiIyMDIxLTExLTIxIiwiZXh0ZW5kZWQiOnRydWV9LHsiY29kZSI6IlBXUyIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjp0cnVlfSx7ImNvZGUiOiJQU0kiLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6dHJ1ZX0seyJjb2RlIjoiUENXTVAiLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6dHJ1ZX0seyJjb2RlIjoiUFBTIiwicGFpZFVwVG8iOiIyMDIxLTExLTIxIiwiZXh0ZW5kZWQiOnRydWV9LHsiY29kZSI6IlBHTyIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjp0cnVlfSx7ImNvZGUiOiJQUEMiLCJwYWlkVXBUbyI6IjIwMjEtMTEtMjEiLCJleHRlbmRlZCI6dHJ1ZX0seyJjb2RlIjoiUFJCIiwicGFpZFVwVG8iOiIyMDIxLTExLTIxIiwiZXh0ZW5kZWQiOnRydWV9LHsiY29kZSI6IlBTVyIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjp0cnVlfSx7ImNvZGUiOiJSUyIsInBhaWRVcFRvIjoiMjAyMS0xMS0yMSIsImV4dGVuZGVkIjp0cnVlfV0sIm1ldGFkYXRhIjoiMDEyMDIxMTAyMlBQQU0wMDAwMDUiLCJoYXNoIjoiMjcxODgyMjQvMDotMTMwNTc4MjA4IiwiZ3JhY2VQZXJpb2REYXlzIjo3LCJhdXRvUHJvbG9uZ2F0ZWQiOmZhbHNlLCJpc0F1dG9Qcm9sb25nYXRlZCI6ZmFsc2V9-DtQy86KmJg6qPS3qOZbmfRIQdMAZU0elaPliJSQh2JvfdB+pONnKzeLaJIXqffuYadc1/grZtXlxzS0zRr5Z2Q7v6tQiVldNPGNG3b+RHgLOC/noE9065+VMCNlGFXEYvVzCvNkOC11JWcLJiElcC4mdzMWCEGtCvV98mUP/gm6nFcMT4APLeonaTSms5FwbA22WoikNYqlsnbw/QqIoN2cPtAzFLCYryog1hwIaBnBNYiyRTD54SGZSYObpTUOa4V+CRJyl0zrO2R7dUhk/nM1tYGP2x4QXNGbxw0N3NcU6IVpaOqhpQ0n1eARcfMhDHTQEwKpOzpGigRE4QKfRFw==-MIIETDCCAjSgAwIBAgIBDTANBgkqhkiG9w0BAQsFADAYMRYwFAYDVQQDDA1KZXRQcm9maWxlIENBMB4XDTIwMTAxOTA5MDU1M1oXDTIyMTAyMTA5MDU1M1owHzEdMBsGA1UEAwwUcHJvZDJ5LWZyb20tMjAyMDEwMTkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDCP4uk4SlVdA5nuA3DQC+NsEnZS9npFnO0zrmMWcz1++q2UWJNuGTh0rwi+3fUJIArfvVh7gNtIp93rxjtrQAuf4/Fa6sySp4c32MeFACfC0q+oUoWebhOIaYTYUxm4LAZ355vzt8YeDPmvWKxA81udqEk4gU9NNAOz1Um5/8LyR8SGsSc4EDBRSjcMWMwMkYSauGqGcEUK8WhfplsyF61lKSOFA6VmfUmeDK15rUWWLbOMKgn2cxFA98A+s74T9Oo96CU7rp/umDXvhnyhAXSukw/qCGOVhwKR8B6aeDtoBWQgjnvMtPgOUPRTPkPGbwPwwDkvAHYiuKJ7Bd2wH7rAgMBAAGjgZkwgZYwCQYDVR0TBAIwADAdBgNVHQ4EFgQUJNoRIpb1hUHAk0foMSNM9MCEAv8wSAYDVR0jBEEwP4AUo562SGdCEjZBvW3gubSgUouX8bOhHKQaMBgxFjAUBgNVBAMMDUpldFByb2ZpbGUgQ0GCCQDSbLGDsoN54TATBgNVHSUEDDAKBggrBgEFBQcDATALBgNVHQ8EBAMCBaAwDQYJKoZIhvcNAQELBQADggIBAB2J1ysRudbkqmkUFK8xqhiZaYPd30TlmCmSAaGJ0eBpvkVeqA2jGYhAQRqFiAlFC63JKvWvRZO1iRuWCEfUMkdqQ9VQPXziE/BlsOIgrL6RlJfuFcEZ8TK3syIfIGQZNCxYhLLUuet2HE6LJYPQ5c0jH4kDooRpcVZ4rBxNwddpctUO2te9UU5/FjhioZQsPvd92qOTsV+8Cyl2fvNhNKD1Uu9ff5AkVIQn4JU23ozdB/R5oUlebwaTE6WZNBs+TA/qPj+5/wi9NH71WRB0hqUoLI2AKKyiPw++FtN4Su1vsdDlrAzDj9ILjpjJKA1ImuVcG329/WTYIKysZ1CWK3zATg9BeCUPAV1pQy8ToXOq+RSYen6winZ2OO93eyHv2Iw5kbn1dqfBw1BuTE29V2FJKicJSu8iEOpfoafwJISXmz1wnnWL3V/0NxTulfWsXugOoLfv0ZIBP1xH9kmf22jjQ2JiHhQZP7ZDsreRrOeIQ/c4yR8IQvMLfC0WKQqrHu5ZzXTH4NO3CwGWSlTY74kE91zXB5mwWAx1jig+UXYc2w4RkVhy0//lOmVya/PEepuuTTI4+UJwC7qbVlh5zfhj8oTNUXgN0AOc+Q0/WFPl1aw5VV/VrO8FCoB15lFVlpKaQ1Yh+DVU8ke+rt9Th0BCHXe0uZOEmH0nOnH/0onD</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="3-之后见post文档"><a href="#3-之后见post文档" class="headerlink" title="3.之后见post文档"></a>3.之后见post文档</h4><p>主要配置FineAgent.jar</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">// C:\Users\81566\AppData\Roaming\JetBrains\PyCharm2021.2\pycharm64.exe.vmoptions</span><br><span class="line">-javaagent:D:\\FineAgent.jar</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>工具集</category>
+      </categories>
+      <tags>
+        <tag>工具集</tag>
+        <tag>Python IDE</tag>
+      </tags>
+  </entry>
 </search>
