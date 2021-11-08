@@ -6964,7 +6964,9 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
 <li><p>搜索<code>avc：</code>并且取出对应的日志，取名为xxx.txt （例如denied.txt）</p>
 </li>
 <li><p>使用audit2allow 工具转化日志成规则</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">audit2allow -i denied.txt &gt; selinux_rule.txt</span><br></pre></td></tr></table></figure></li>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">audit2allow -i denied.txt &gt; selinux_rule.txt</span><br></pre></td></tr></table></figure>
+<p>此处要注意的是audit2allow这个工具一定要用<code>external/selinux/prebuilts/bin</code>目录下的，否则会报如下错误</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">ValueError: You must specify the -p option with the path to the policy file.</span><br></pre></td></tr></table></figure></li>
 </ul>
 <h4 id="2-配置规则"><a href="#2-配置规则" class="headerlink" title="2 配置规则"></a>2 配置规则</h4><p>获取到selinux_rule.txt如下</p>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">============= bluetooth ==============</span></span><br><span class="line">allow bluetooth mediametrics_service:service_manager find;</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">============= g7ph_x5r ==============</span></span><br><span class="line">allow g7ph_x5r ip_exec:file &#123; execute execute_no_trans getattr map open read &#125;;</span><br><span class="line">allow g7ph_x5r net_data_file:dir search;</span><br><span class="line">allow g7ph_x5r net_data_file:file &#123; getattr open read &#125;;</span><br><span class="line">allow g7ph_x5r proc_cmdline:file &#123; open read &#125;;</span><br><span class="line">allow g7ph_x5r self:capability net_admin;</span><br><span class="line">allow g7ph_x5r self:netlink_route_socket &#123; bind create getattr nlmsg_write read setopt write &#125;;</span><br><span class="line">allow g7ph_x5r self:udp_socket &#123; create ioctl &#125;;</span><br><span class="line">allow g7ph_x5r vendor_toolbox_exec:file &#123; execute execute_no_trans map &#125;;</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">============= hal_audio_default ==============</span></span><br><span class="line">allow hal_audio_default hal_vehicle_hwservice:hwservice_manager find;</span><br><span class="line">allow hal_audio_default netd:unix_stream_socket connectto;</span><br><span class="line">allow hal_audio_default self:tcp_socket &#123; connect create &#125;;</span><br></pre></td></tr></table></figure>
@@ -6973,29 +6975,55 @@ synchronized是Java的一个保留字，只是一个代码标识符，它依靠J
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">============= bluetooth ==============</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> 这一行中的bluetooth代表bluetooth.te文件，在device目录找到对应要生效的te把规则加入进去，保证编译通过验证一下还有没有其他规则报出来，如果没有了就说明通过了。</span></span><br></pre></td></tr></table></figure>
 
 
+<p>规则配置完成之后，可以使用如下指令仅对selinux规则进行编译，此编译通过之后，再进行整编可以加快配的速度。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">make sepolicy</span><br></pre></td></tr></table></figure>
+
+
 <h4 id="3-检查配置"><a href="#3-检查配置" class="headerlink" title="3.检查配置"></a>3.检查配置</h4><p>有的时候权限明明加进去了却还是报相同的错误,这个时候你就得检查你是否加对地方了。</p>
 <p>查看如下目录是否有配置的策略。</p>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">out/target/product/msmnile_gvmq/obj/ETC/sepolicy.recovery_intermediates/sepolicy.recovery.conf</span><br></pre></td></tr></table></figure>
 
 
+<h4 id="4-处理nerverallow"><a href="#4-处理nerverallow" class="headerlink" title="4.处理nerverallow"></a>4.处理nerverallow</h4><h5 id="4-1-system-data-file类型"><a href="#4-1-system-data-file类型" class="headerlink" title="4.1 system_data_file类型"></a>4.1 system_data_file类型</h5><p><strong>报错日志：</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">neverallow on line 1161 of system&#x2F;sepolicy&#x2F;public&#x2F;domain.te (or line 11544 of policy.conf) violated by allow iap2communication system_data_file:file &#123; write create &#125;;</span><br></pre></td></tr></table></figure>
 
 
+<p><strong>解决办法：</strong></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">// audit2allow生成的规则</span><br><span class="line"><span class="meta">#</span><span class="bash">============= iap2communication ==============</span></span><br><span class="line">allow iap2communication i2c_device:chr_file &#123; ioctl open read write &#125;;</span><br><span class="line">allow iap2communication system_data_file:dir &#123; add_name write &#125;;</span><br><span class="line">allow iap2communication system_data_file:file &#123; create open write &#125;;  // 此条要细化到具体某个file域</span><br></pre></td></tr></table></figure>
 
 
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">// 模块的filecontext中添加</span><br><span class="line"></span><br><span class="line">/data/carplay(/.*)?	 u:object_r:carplaycommunication_file:s0</span><br></pre></td></tr></table></figure>
 
 
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">// 模块的file.te文件中定义type</span><br><span class="line"></span><br><span class="line">type iap2communication_file, file_type, data_file_type, core_data_file_type, mlstrustedobject;</span><br></pre></td></tr></table></figure>
 
 
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">// iap2communication进程域访问的文件中添加规则。具体在iap2communication.te中</span><br><span class="line"></span><br><span class="line">allow iap2communication i2c_device:chr_file &#123; ioctl open read write &#125;;</span><br><span class="line">allow iap2communication system_data_file:dir &#123; add_name write &#125;;</span><br><span class="line">//此处填入具体的域carplaycommunication_file</span><br><span class="line">allow iap2communication carplaycommunication_file:file &#123; create open write &#125;;</span><br></pre></td></tr></table></figure>
 
 
+<h5 id="4-2-default-android-service类型"><a href="#4-2-default-android-service类型" class="headerlink" title="4.2 default_android_service类型"></a>4.2 default_android_service类型</h5><p>定义file_contexts</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// qcom/sepolicy/vendor/common/file_contexts</span></span><br><span class="line">/vendor/bin/hw/android\.hardware\.bluetoothext@<span class="number">1</span>\<span class="number">.0</span>-service         u:object_r:hal_bluetoothext_default_exec:s0</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 定于域 qcom/sepolicy/vendor/common/bluetoothext.te</span></span><br><span class="line">type hal_bluetoothext_default, domain;</span><br><span class="line">type hal_bluetoothext_default_exec, exec_type, vendor_file_type, file_type;</span><br><span class="line">init_daemon_domain(hal_bluetoothext_default)</span><br><span class="line">    </span><br><span class="line"><span class="comment">// 此处要指定具体service：hal_bluetoothext_hwservice</span></span><br><span class="line">allow hal_bluetoothext_default hal_bluetoothext_hwservice:hwservice_manager &#123; add find &#125;;  </span><br><span class="line">allow hal_bluetoothext_default hidl_base_hwservice:hwservice_manager add;</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// hwservice_contexts，定义file_contexts</span></span><br><span class="line">android.hardware.bluetoothext::IBluetoothHci        u:object_r:hal_bluetoothext_hwservice:s0</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// hwservice.te，定义hal_bluetoothext_hwservice域</span></span><br><span class="line">type hal_bluetoothext_hwservice, hwservice_manager_type;</span><br></pre></td></tr></table></figure>
 
 
+<h5 id="4-2-hal-neverallows-te类型"><a href="#4-2-hal-neverallows-te类型" class="headerlink" title="4.2 hal_neverallows.te类型"></a>4.2 hal_neverallows.te类型</h5><p>报错信息：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">libsepol.report_failure: neverallow on line 27 of system&#x2F;sepolicy&#x2F;public&#x2F;hal_neverallows.te (or line 15113 of policy.conf) violated by allow hal_audio_default hal_audio_default:tcp_socket &#123; read create connect &#125;;</span><br></pre></td></tr></table></figure>
 
 
+<p>原因：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">// system/sepolicy/public/hal_neverallows.te</span><br><span class="line">// system/sepolicy/prebuilts/api/26.0/public/hal_neverallows.te</span><br><span class="line">// system/sepolicy/prebuilts/api/27.0/public/hal_neverallows.te</span><br><span class="line">// system/sepolicy/prebuilts/api/28.0/public/hal_neverallows.te</span><br><span class="line">neverallow &#123;</span><br><span class="line">  halserverdomain</span><br><span class="line">  -hal_automotive_socket_exemption</span><br><span class="line">  -hal_tetheroffload_server</span><br><span class="line">  -hal_wifi_server</span><br><span class="line">  -hal_wifi_hostapd_server</span><br><span class="line">  -hal_wifi_supplicant_server</span><br><span class="line">  -hal_telephony_server</span><br><span class="line">&#125; domain:&#123; tcp_socket udp_socket rawip_socket &#125; *;</span><br></pre></td></tr></table></figure>
+<p>解决办法：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">typeattribute hal_audio_default system_executes_vendor_violators;</span><br></pre></td></tr></table></figure>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">// system/sepolicy/public/hal_neverallows.te</span><br><span class="line">// system/sepolicy/prebuilts/api/26.0/public/hal_neverallows.te</span><br><span class="line">// system/sepolicy/prebuilts/api/27.0/public/hal_neverallows.te</span><br><span class="line">// system/sepolicy/prebuilts/api/28.0/public/hal_neverallows.te</span><br><span class="line">neverallow &#123;</span><br><span class="line">  halserverdomain</span><br><span class="line">  -hal_automotive_socket_exemption</span><br><span class="line">  -hal_tetheroffload_server</span><br><span class="line">  -hal_wifi_server</span><br><span class="line">  -hal_wifi_hostapd_server</span><br><span class="line">  -hal_wifi_supplicant_server</span><br><span class="line">  -hal_telephony_server</span><br><span class="line">  -system_executes_vendor_violators</span><br><span class="line">&#125; domain:&#123; tcp_socket udp_socket rawip_socket &#125; *;</span><br></pre></td></tr></table></figure>
 
 
+<h5 id="4-3-引入所有sepolicy"><a href="#4-3-引入所有sepolicy" class="headerlink" title="4.3 引入所有sepolicy"></a>4.3 引入所有sepolicy</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> /device/gxatek/common/sepolicy.mk</span></span><br><span class="line">SEPOLICY_PATH := device/gxatek/common/legacy/sepolicy</span><br><span class="line"></span><br><span class="line">TS_PUBLIC_POLICY := $(SEPOLICY_PATH)/public</span><br><span class="line">TS_COMPONET_PUBLIC := $(wildcard $(TS_PUBLIC_POLICY)/*)</span><br><span class="line">BOARD_PLAT_PUBLIC_SEPOLICY_DIR += $(foreach n, $(TS_COMPONET_PUBLIC), $(n)/np_types)</span><br><span class="line"></span><br><span class="line">TS_PRIVATE_POLICY := $(SEPOLICY_PATH)/private</span><br><span class="line">TS_COMPONET_PRIVATE := $(wildcard $(TS_PRIVATE_POLICY)/*)</span><br><span class="line">BOARD_PLAT_PRIVATE_SEPOLICY_DIR += $(foreach n, $(TS_COMPONET_PRIVATE), $(n)/np_types)</span><br><span class="line"></span><br><span class="line">TS_VENDOR_POLICY := $(SEPOLICY_PATH)/vendor</span><br><span class="line">TS_COMPONET_VENDOR := $(wildcard $(TS_VENDOR_POLICY)/*)</span><br><span class="line">BOARD_SEPOLICY_DIRS += $(foreach n, $(TS_COMPONET_VENDOR), $(n)/np_types)</span><br></pre></td></tr></table></figure>
 
 
+<h5 id="4-4-重复定义"><a href="#4-4-重复定义" class="headerlink" title="4.4 重复定义"></a>4.4 重复定义</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">Multiple same specifications for vendor.ts.audioext::IAudioExtService.</span><br><span class="line">Multiple same specifications for vendor.ts.broadcastradio::IBroadcastRadio.</span><br><span class="line">Multiple same specifications for vendor.ts.vehiclediag::IVehicleDiag.</span><br><span class="line">Multiple same specifications for vendor.ts.light::ILight.</span><br><span class="line">Multiple same specifications for vendor.ts.gnssext::IGnssExt.</span><br><span class="line">Multiple same specifications for vendor.ts.mex::IMex.</span><br><span class="line">Multiple same specifications for vendor.ts.mextransfer::IMexTransfer.</span><br><span class="line">Multiple same specifications for vendor.ts.persistenceadmin::IPersistenceAdmin.</span><br><span class="line">Multiple same specifications for vendor.ts.perscommonservice::IPersCommonService.</span><br><span class="line">Multiple same specifications for vendor.ts.systemlog::ISystemLog.</span><br><span class="line">Multiple same specifications for vendor.ts.timesync::ITimeSync.</span><br><span class="line">Multiple same specifications for vendor.ts.hardware.wifi.hostapd::IHostapd.</span><br><span class="line">Multiple same specifications for vendor.ts.iap::IIap.</span><br><span class="line">Multiple same specifications for vendor.ts.iap::IIapCallback.</span><br><span class="line">Multiple same specifications for vendor.ts.someip::ISomeIp.</span><br><span class="line">Multiple same specifications for vendor.ts.someip::ISomeIpCallback.</span><br><span class="line">Multiple same specifications for vendor.ts.someip::ISomeIpClient.</span><br><span class="line">Multiple same specifications for vendor.ts.someip::ISomeIpServer.</span><br><span class="line">Multiple same specifications for vendor.ts.tbox::ITbox.</span><br><span class="line">Multiple same specifications for vendor.ts.tbox::ITboxCallback.</span><br><span class="line">Multiple same specifications for vendor.ts.tbox::ITboxWifi.</span><br><span class="line">Multiple same specifications for vendor.ts.tbox::ITboxWifiCallback.</span><br><span class="line">Multiple same specifications for vendor.ts.tbox::ITboxGnss.</span><br><span class="line">Multiple same specifications for vendor.ts.tbox::ITboxGnssCallback.</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">out/target/product/msmnile_gvmq/obj/ETC/plat_file_contexts_intermediates/plat_file_contexts.tmp: Multiple same specifications for /system/bin/CarPlayCommService.</span><br><span class="line">out/target/product/msmnile_gvmq/obj/ETC/plat_file_contexts_intermediates/plat_file_contexts.tmp: Multiple same specifications for /system/bin/CarPlayCommService.</span><br><span class="line">out/target/product/msmnile_gvmq/obj/ETC/plat_file_contexts_intermediates/plat_file_contexts.tmp: Multiple same specifications for /system/bin/IAP2CommService.</span><br><span class="line">out/target/product/msmnile_gvmq/obj/ETC/plat_file_contexts_intermediates/plat_file_contexts.tmp: Multiple same specifications for /system/bin/IAP2CommService.</span><br><span class="line">out/target/product/msmnile_gvmq/obj/ETC/plat_file_contexts_intermediates/plat_file_contexts.tmp: Multiple same specifications for /data/carplay(/.*)?.</span><br></pre></td></tr></table></figure>
 ]]></content>
       <categories>
         <category>Android</category>
@@ -10472,9 +10500,22 @@ fastboot boot $ANDROID_PRODUCT_OUT/boot.img
       </tags>
   </entry>
   <entry>
-    <title>重温PackageManagerService-源码分析</title>
+    <title></title>
     <url>/2021/10/19/%E9%87%8D%E6%B8%A9PackageManagerService-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/</url>
-    <content><![CDATA[<h4 id="声明"><a href="#声明" class="headerlink" title="声明"></a>声明</h4><p>此次blog分析的源码是Android Q的代码，如果在Android Q以前找不到对应的方法，可以同步Android Q代码找找试试。PKMS服务在Android N/O/P三个版本变化不大，升级到Android Q有较大变化，有些方法名字一样，内部实现可能不一样了。</p>
+    <content><![CDATA[<p>title: 重温PackageManagerService-源码分析<br>date: 2021-10-19 23:33:24<br>tags:</p>
+<pre><code>- PKMS
+- Android
+- Framework
+categories: Framework
+keywords: &#39;Android,PKMS,Framework&#39;
+description: 此笔记记录重温PKMS，重新撸PKMS源码，分析PKMS启动过程中做了什么，PKMS能做什么，如何通过PKMS实现静默安装需求等。
+cover: https://upload-images.jianshu.io/upload_images/13838098-2438f85e85a99fd4.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240
+copyright_author: Jack Ou
+copyright_author_href: https://www.jianshu.com/u/10058d760200
+copyright_url: https://www.jianshu.com/u/10058d760200
+copyright_info: 此文章版权归Jack Ou所有，如有转载，请註明来自原作者
+</code></pre>
+<h4 id="声明"><a href="#声明" class="headerlink" title="声明"></a>声明</h4><p>此次blog分析的源码是Android Q的代码，如果在Android Q以前找不到对应的方法，可以同步Android Q代码找找试试。PKMS服务在Android N/O/P三个版本变化不大，升级到Android Q有较大变化，有些方法名字一样，内部实现可能不一样了。</p>
 <p>如下是Android Q pm目录下的源码分析笔记：<a href="https://github.com/oujie123/PackageManagerService">PackageManagerService源码跟踪分析笔记传送门</a></p>
 <h3 id="1-PKMS概述"><a href="#1-PKMS概述" class="headerlink" title="1.PKMS概述"></a>1.PKMS概述</h3><p>PackageManagerService（简称 PKMS），是 Android 系统中核心服务之一，负责应用程序的<strong>安装，卸载，包信息查询</strong>等工作。</p>
 <p>Android系统启动时，会启动（应用程序管理服务器PKMS），此服务负责扫描系统中特定的目录，寻找里面的APK格式的文件，并对这些文件进行解析，然后得到应用程序相关信息，最后完成应用程序的安装。</p>
@@ -10764,15 +10805,48 @@ fastboot boot $ANDROID_PRODUCT_OUT/boot.img
 <p><privapp-permission>会根据不同的存储路径，分别存储在mVendorPrivAppPermissions、mProductPrivAppPermissions、 mSystemExtPrivAppPermissions、mPrivAppPermissions  </privapp-permission></p>
 </blockquote>
 <p><strong>总结</strong>：权限扫描，扫描/system/etc/permissions中的xml，存入相应的结构体中，供之后权限管理使用  </p>
+<h3 id="8-Apk安装"><a href="#8-Apk安装" class="headerlink" title="8 Apk安装"></a>8 Apk安装</h3><p><img src="/2021/10/19/%E9%87%8D%E6%B8%A9PackageManagerService-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/blog\source_posts\重温PackageManagerService-源码分析\有界面安装apk过程.png" alt="有界面安装apk过程"></p>
+<p>如果是有界面的安装方式相信大家平时接触的都比较多了吧，比如从网络上下载一个apk之后就会弹出安装界面，那就是有界面安装方式。  首先我们要知道有界面安装方式的那个界面是从哪里来的，还有就是如何启动那个安装界面的。那个界面其实就是<code>InstallStart</code>类，这是packages/app/PackageInstaller应用中的主界面，我们可以看一下该应用的Manifest文件。</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">activity</span> <span class="attr">android:name</span>=<span class="string">&quot;.InstallStart&quot;</span></span></span><br><span class="line"><span class="tag">        <span class="attr">android:exported</span>=<span class="string">&quot;true&quot;</span></span></span><br><span class="line"><span class="tag">        <span class="attr">android:excludeFromRecents</span>=<span class="string">&quot;true&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">intent-filter</span> <span class="attr">android:priority</span>=<span class="string">&quot;1&quot;</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">action</span> <span class="attr">android:name</span>=<span class="string">&quot;android.intent.action.VIEW&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">action</span> <span class="attr">android:name</span>=<span class="string">&quot;android.intent.action.INSTALL_PACKAGE&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">category</span> <span class="attr">android:name</span>=<span class="string">&quot;android.intent.category.DEFAULT&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">data</span> <span class="attr">android:scheme</span>=<span class="string">&quot;file&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">data</span> <span class="attr">android:scheme</span>=<span class="string">&quot;content&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">data</span> <span class="attr">android:mimeType</span>=<span class="string">&quot;application/vnd.android.package-archive&quot;</span> /&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">intent-filter</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">intent-filter</span> <span class="attr">android:priority</span>=<span class="string">&quot;1&quot;</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">action</span> <span class="attr">android:name</span>=<span class="string">&quot;android.intent.action.INSTALL_PACKAGE&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">category</span> <span class="attr">android:name</span>=<span class="string">&quot;android.intent.category.DEFAULT&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">data</span> <span class="attr">android:scheme</span>=<span class="string">&quot;file&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">data</span> <span class="attr">android:scheme</span>=<span class="string">&quot;package&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">data</span> <span class="attr">android:scheme</span>=<span class="string">&quot;content&quot;</span> /&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">intent-filter</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">intent-filter</span> <span class="attr">android:priority</span>=<span class="string">&quot;1&quot;</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">action</span> <span class="attr">android:name</span>=<span class="string">&quot;android.content.pm.action.CONFIRM_PERMISSIONS&quot;</span> /&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">category</span> <span class="attr">android:name</span>=<span class="string">&quot;android.intent.category.DEFAULT&quot;</span> /&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">intent-filter</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">activity</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ]]></content>
-      <categories>
-        <category>Framework</category>
-      </categories>
-      <tags>
-        <tag>Android</tag>
-        <tag>Framework</tag>
-        <tag>PKMS</tag>
-      </tags>
   </entry>
   <entry>
     <title>聚媒体应用卡顿分析</title>
