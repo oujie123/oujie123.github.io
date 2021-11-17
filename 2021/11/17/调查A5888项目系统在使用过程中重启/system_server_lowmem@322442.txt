@@ -1,0 +1,207 @@
+Process: system_server
+Subject: Low on memory -- 600MB total / 120MB system / 10MB systemui 10MB service 10MB car / 5MB WebViewLoader-arm64-v8a / 10MB latin
+Build: qti/gac/gac:9/PQ1A.190105.004/1:userdebug/test-keys
+
+Low on memory:600MB.total$120MB.system$10MB.systemui$10MB.service$10MB.car$5MB.WebViewLoader-arm64-v8a:
+	 at 10MB.latin(Foreground:0)
+  ntv   ??   58989: zygote (pid 19677) native
+  ntv   ??   41924: zygote64 (pid 19593) native
+  ntv   ??   40203: logd (pid 348) native
+  ntv   ??   22148: surfaceflinger (pid 517) native
+  ntv   ??   16135: vendor.bosch.hardware.receiverbasesoftware@1.0-service (pid 519) native
+  ntv   ??   13738: media.codec (pid 642) native
+  ntv   ??   13571: audioserver (pid 19594) native
+  ntv   ??   11250: android.hardware.audio@2.0-service.rbxc (pid 19630) native
+  ntv   ??   10325: media.extractor (pid 634) native
+  ntv   ??    9670: CarPlayCommService (pid 514) native
+  ntv   ??    9233: android.hardware.graphics.composer@2.2-service (pid 484) native
+  ntv   ??    8161: caraudioserver (pid 19527) native
+  ntv   ??    7512: sbrserver (pid 475) native
+  ntv   ??    6627: android.hardware.camera.provider@2.4-service_64 (pid 478) native
+  ntv   ??    5443: media.metrics (pid 635) native
+  ntv   ??    5407: cameraserver (pid 19595) native
+  ntv   ??    4590: vendor.bosch.hardware.automotive.vehicle@2.0-service (pid 492) native
+  ntv   ??    4543: mediaserver (pid 19596) native
+  ntv   ??    4197: vendor.qti.hardware.perf@1.0-service (pid 499) native
+  ntv   ??    3935: drmserver (pid 628) native
+  ntv   ??    3788: android.hardware.gnss@1.1-service-ubx (pid 483) native
+  ntv   ??    3725: /init (pid 1) native
+  ntv   ??    3566: android.hardware.wifi@1.0-service (pid 489) native
+  ntv   ??    3167: vold (pid 360) native
+  ntv   ??    2890: android.hardware.automotive.evs@1.0-ais (pid 476) native
+  ntv   ??    2876: keystore (pid 632) native
+  ntv   ??    2774: variant_client (pid 356) native
+  ntv   ??    2673: netd (pid 19598) native
+  ntv   ??    2504: installd (pid 631) native
+  ntv   ??    2413: vendor.bosch.hardware.broadcastradio@2.0-service (pid 644) native
+  ntv   ??    2167: statsd (pid 637) native
+  ntv   ??    2100: perfprofd (pid 649) native
+  ntv   ??    2052: hwservicemanager (pid 350) native
+  ntv   ??    2029: vendor.display.color@1.0-service (pid 495) native
+  ntv   ??    2014: ipacm (pid 755) native
+  ntv   ??    1923: android.hardware.sensors@1.0-service (pid 487) native
+  ntv   ??    1905: android.hardware.drm@1.1-service.clearkey (pid 482) native
+  ntv   ??    1900: vendor.bosch.lcm_controller@1.0-service (pid 493) native
+  ntv   ??    1856: android.hardware.drm@1.0-service (pid 481) native
+  ntv   ??    1833: vendor.bosch.display@1.0-service (pid 19622) native
+  ntv   ??    1778: mediadrmserver (pid 633) native
+  ntv   ??    1775: smartservice (pid 490) native
+  ntv   ??    1737: wificond (pid 19620) native
+  ntv   ??    1686: thermal-engine (pid 613) native
+  ntv   ??    1660: android.hardware.cas@1.0-service (pid 479) native
+  ntv   ??    1622: gatekeeperd (pid 648) native
+  ntv   ??    1610: android.hardware.keymaster@4.0-service-qti (pid 359) native
+  ntv   ??    1488: storaged (pid 640) native
+  ntv   ??    1468: vendor.rbxc.usb@1.0-service (pid 501) native
+  ntv   ??    1453: adbd (pid 600) native
+  ntv   ??    1371: /init (pid 293) native
+  ntv   ??    1367: vendor.qti.hardware.display.allocator@1.0-service (pid 498) native
+  ntv   ??    1364: dlt_daemon (pid 398) native
+  ntv   ??    1359: vendor.qti.automotive.qcarcam@1.0-service (pid 496) native
+  ntv   ??    1348: busybox (pid 512) native
+  ntv   ??    1331: incidentd (pid 630) native
+  ntv   ??    1329: android.hardware.bluetooth@1.0-service (pid 477) native
+  ntv   ??    1287: ueventd (pid 296) native
+  ntv   ??    1256: mdnsd (pid 702) native
+  ntv   ??    1244: name-server (pid 355) native
+  ntv   ??    1198: android.hardware.gatekeeper@1.0-service-qti (pid 358) native
+  ntv   ??    1197: thermalserviced (pid 518) native
+  ntv   ??    1173: ip6tables-restore (pid 19626) native
+  ntv   ??    1166: android.hardware.configstore@1.1-service (pid 480) native
+  ntv   ??    1155: qseecomd (pid 353) native
+  ntv   ??    1149: android.hardware.health@2.0-service (pid 485) native
+  ntv   ??    1141: pd-mapper (pid 509) native
+  ntv   ??    1081: vendor.rbxc.usbext@1.0-service (pid 502) native
+  ntv   ??    1075: iptables-restore (pid 19624) native
+  ntv   ??    1037: android.hardware.boot@1.0-service (pid 357) native
+  ntv   ??    1026: vendor.rbxc.usb.gadget@1.0-service (pid 500) native
+  ntv   ??    1020: IAP2CommService (pid 515) native
+  ntv   ??     991: ipacm-diag (pid 741) native
+  ntv   ??     974: /init (pid 294) native
+  ntv   ??     966: vndservicemanager (pid 351) native
+  ntv   ??     963: sleep (pid 19422) native
+  ntv   ??     956: android.hardware.thermal@1.0-service (pid 488) native
+  ntv   ??     932: ssgtzd (pid 1855) native
+  ntv   ??     927: vendor.qti.hardware.alarm@1.0-service (pid 497) native
+  ntv   ??     921: android.hardware.memtrack@1.0-service (pid 486) native
+  ntv   ??     901: healthd (pid 474) native
+  ntv   ??     886: servicemanager (pid 349) native
+  ntv   ??     880: com.android.car.procfsinspector (pid 513) native
+  ntv   ??     799: logcatd (pid 2502) native
+  ntv   ??     759: android.hidl.allocator@1.0-service (pid 473) native
+  ntv   ??     753: msm_irqbalance (pid 724) native
+  ntv   ??     701: sh (pid 593) native
+  ntv   ??     700: logcatd (pid 2500) native
+  ntv   ??     699: sh (pid 14845) native
+  ntv   ??     692: amfsservice (pid 615) native
+  ntv   ??     688: sh (pid 1915) native
+  ntv   ??     675: tombstoned (pid 650) native
+  ntv   ??     636: qrtr-ns (pid 504) native
+  ntv   ??     592: lmkd (pid 516) native
+  sys   PER   109363: system (pid 19733) fixed
+  pers  PER    10023: com.android.systemui (pid 19964) fixed
+  pers  PER     9933: com.core.system.service (pid 19957) fixed
+  pers  PER     9860: com.android.car (pid 19938) fixed
+  psvc  PER        0: WebViewLoader-arm64-v8a (pid 20026) fixed
+  fore  IMPB    9960: com.android.inputmethod.latin (pid 19923) service
+                       com.android.inputmethod.latin/.CarLatinIME<=Proc{19733:system/1000}
+  sys   PER   109363: system (pid 19733) fixed
+  pers  PER    10023: com.android.systemui (pid 19964) fixed
+  pers  PER     9933: com.core.system.service (pid 19957) fixed
+  pers  PER     9860: com.android.car (pid 19938) fixed
+  psvc  PER        0: WebViewLoader-arm64-v8a (pid 20026) fixed
+  fore  IMPB    9960: com.android.inputmethod.latin (pid 19923) service
+                       com.android.inputmethod.latin/.CarLatinIME<=Proc{19733:system/1000}
+            557837: TOTAL
+
+  MemInfo:   116,288K slab,       952K shmem,   176,216K vm alloc,    11,400K page tables    12,824K kernel stack
+               9,952K buffers, 1,205,452K cached,   337,812K mapped, 3,753,592K free
+  ZRAM:        12K RAM, 1,048,572K swap total, 1,048,572K swap free
+  Free RAM: 4,680,364K
+  Used RAM:   826,337K
+  Lost RAM:   884,579K
+
+
+ACTIVITY MANAGER RUNNING PROCESSES (dumpsys activity processes)
+  UID states:
+    UID 1000: UidRecord{c062b6a 1000 PER  change:active|uncached procs:3 seq(0,0,0)}
+    UID u0a19: UidRecord{dd6f85b u0a19 PER  change:active|uncached procs:1 seq(0,0,0)}
+    UID u0a67: UidRecord{595a8f8 u0a67 IMPB change:active|uncached procs:1 seq(0,0,0)}
+
+  Process LRU list (sorted by oom_adj, 5 total, non-act at 0, non-svc at 0):
+    PERS # 4: sys   F/ /PER  trm:15 19733:system/1000 (fixed)
+    PERS # 3: pers  F/ /PER  trm:15 19938:com.android.car/1000 (fixed)
+    PERS # 1: pers  F/ /PER  trm:15 19964:com.android.systemui/u0a19 (fixed)
+    PERS # 0: pers  F/ /PER  trm:15 19957:com.core.system.service/1000 (fixed)
+    Proc # 2: fore  F/ /IMPB trm:15 19923:com.android.inputmethod.latin/u0a67 (service)
+        com.android.inputmethod.latin/.CarLatinIME<=Proc{19733:system/1000}
+
+  Processes that are waiting to GC:
+    Process ProcessRecord{e47b9d8 19733:system/1000}
+      lowMem=true, last gced=322432 ms ago, last lowMem=159 ms ago
+
+  mStartedUsers:
+    User #0: state=BOOTING
+  mStartedUserArray: [0]
+  mUserLru: [0]
+  mGlobalConfiguration: {1.0 ?mcc?mnc [zh_CN] ldltr sw1080dp w1920dp h894dp 160dpi xlrg long land car finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=Rect(0, 0 - 1920, 980) mWindowingMode=fullscreen mActivityType=undefined} s.4}
+  Display override configurations:
+    0: {1.0 ?mcc?mnc [zh_CN] ldltr sw1080dp w1920dp h894dp 160dpi xlrg long land car finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 980) mWindowingMode=fullscreen mActivityType=undefined} s.4}
+    1: {0.0 ?mcc?mnc ?localeList ?layoutDir sw540dp w1442dp h540dp 213dpi lrg long land ?uimode ?night finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 720) mAppBounds=Rect(0, 0 - 1920, 720) mWindowingMode=fullscreen mActivityType=undefined}}
+  mWakefulness=Awake
+  mSleepTokens=[]
+  mSleeping=false
+  mShuttingDown=false mTestPssMode=false
+  mVrController=[VrState=0x0,VrRenderThreadTid=0]
+  mForceBackgroundCheck=false
+
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  User 0 active services:
+  * ServiceRecord{a55f75e u0 com.android.car/.CarService}
+    app=ProcessRecord{204b1d1 19938:com.android.car/1000}
+    created=-455ms started=false connections=1
+    Connections:
+      act=android.car.ICar pkg=com.android.car -> 19733:system/1000
+  * ServiceRecord{8ad273f u0 com.android.inputmethod.latin/.CarLatinIME}
+    app=ProcessRecord{2d39436 19923:com.android.inputmethod.latin/u0a67}
+    created=-463ms started=false connections=1
+    Connections:
+      act=android.view.InputMethod -> 19733:system/1000
+  * ServiceRecord{d69180c u0 com.android.systemui/.SystemUIService}
+    app=ProcessRecord{302bf37 19964:com.android.systemui/u0a19}
+    created=-452ms started=true connections=0
+  * ServiceRecord{5b1555 u0 com.core.system.service/.CoreSystemServer}
+    app=ProcessRecord{9f85ca4 19957:com.core.system.service/1000}
+    created=-452ms started=true connections=0
+  * ServiceRecord{aad2d97 u0 com.android.server.telecom/.components.TelecomService}
+    app=ProcessRecord{e47b9d8 19733:system/1000}
+    created=-486ms started=false connections=1
+    Connections:
+      act=com.android.ITelecomService -> 19733:system/1000
+
+ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
+Display #0 (activities from top to bottom):
+
+  Stack #0: type=home mode=fullscreen
+  isSleeping=false
+  mBounds=Rect(0, 0 - 0, 0)
+Display #1 (activities from top to bottom):
+  mFocusedStack=ActivityStack{5d19a0d stackId=0 type=home mode=fullscreen visible=true translucent=true, 0 tasks} mLastFocusedStack=ActivityStack{5d19a0d stackId=0 type=home mode=fullscreen visible=true translucent=true, 0 tasks}
+  mCurTaskIdForUser={}
+  mUserStackInFront={}
+  displayId=1 stacks=0
+  displayId=0 stacks=1
+   mHomeStack=ActivityStack{5d19a0d stackId=0 type=home mode=fullscreen visible=true translucent=true, 0 tasks}
+  isHomeRecentsComponent=false  KeyguardController:
+    mKeyguardShowing=false
+    mAodShowing=false
+    mKeyguardGoingAway=false
+    mOccluded=false
+    mDismissingKeyguardActivity=null
+    mDismissalRequested=false
+    mVisibilityTransactionDepth=0
+  LockTaskController
+    mLockTaskModeState=NONE
+    mLockTaskModeTasks=
+    mLockTaskPackages (userId:packages)=
+      u0:[]
