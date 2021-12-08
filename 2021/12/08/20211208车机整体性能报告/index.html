@@ -1,0 +1,1000 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>20211208车机整体性能报告 | Learn OS concepts by coding them!</title><meta name="keywords" content="整体性能分析,Android"><meta name="author" content="Jack Ou"><meta name="copyright" content="Jack Ou"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="referrer" content="no-referrer"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="本文主要叙述车机整体应用性能参数分析以及问题暴露。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="20211208车机整体性能报告">
+<meta property="og:url" content="https://oujie123.github.io/2021/12/08/20211208%E8%BD%A6%E6%9C%BA%E6%95%B4%E4%BD%93%E6%80%A7%E8%83%BD%E6%8A%A5%E5%91%8A/index.html">
+<meta property="og:site_name" content="Learn OS concepts by coding them!">
+<meta property="og:description" content="本文主要叙述车机整体应用性能参数分析以及问题暴露。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/13838098-68e128c62e879dbb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="article:published_time" content="2021-12-08T03:10:35.000Z">
+<meta property="article:modified_time" content="2021-12-08T14:21:08.037Z">
+<meta property="article:author" content="Jack Ou">
+<meta property="article:tag" content="Android">
+<meta property="article:tag" content="系统优化">
+<meta property="article:tag" content="整体性能分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/13838098-68e128c62e879dbb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="shortcut icon" href="https://upload-images.jianshu.io/upload_images/13838098-8a5cd66eafd7c761.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="canonical" href="https://oujie123.github.io/2021/12/08/20211208%E8%BD%A6%E6%9C%BA%E6%95%B4%E4%BD%93%E6%80%A7%E8%83%BD%E6%8A%A5%E5%91%8A/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":50,"languages":{"author":"作者: Jack Ou","link":"链接: ","source":"来源: Learn OS concepts by coding them!","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: true,
+  islazyload: false,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}
+
+// https://stackoverflow.com/questions/16839698/jquery-getscript-alternative-in-native-javascript
+const getScript = url => new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.async = true
+  script.onerror = reject
+  script.onload = script.onreadystatechange = function() {
+    const loadState = this.readyState
+    if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+    script.onload = script.onreadystatechange = null
+    resolve()
+  }
+  document.head.appendChild(script)
+})</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2021-12-08 22:21:08'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><meta name="generator" content="Hexo 5.3.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">144</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">103</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">9</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-68e128c62e879dbb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Learn OS concepts by coding them!</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">20211208车机整体性能报告</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-12-08T03:10:35.000Z" title="发表于 2021-12-08 11:10:35">2021-12-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-12-08T14:21:08.037Z" title="更新于 2021-12-08 22:21:08">2021-12-08</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/Android/">Android</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">3.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>10分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><blockquote>
+<p>title: GACXXXX_A88_AVNT_SE_211202.R5.49_R周版本整体性能报告，以及各项性能问题暴露</p>
+<p>author: 欧杰，莫国权</p>
+</blockquote>
+<h3 id="1-背景"><a href="#1-背景" class="headerlink" title="1 背景"></a>1 背景</h3><p>该报告中涉及到CPU，内存，IO，View数据来自<code>GACXXXX_A88_AVNT_SE_211202.R5.49_R</code>周版本，采集周期为573个周期，采集时间为1.6小时的性能数据，采集方式：monkey白名单测试。</p>
+<p>系统启动时间基于没有优化合入的版本，应用启动时间和apk包大小目前看有部分应用功能还没有全。</p>
+<h3 id="2-系统性能参数分析"><a href="#2-系统性能参数分析" class="headerlink" title="2.系统性能参数分析"></a>2.系统性能参数分析</h3><p>该章节从系统层面分析当前系统各项性能指标。</p>
+<h4 id="2-1-启动耗时"><a href="#2-1-启动耗时" class="headerlink" title="2.1 启动耗时"></a>2.1 启动耗时</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-ecfb40dcc03b5398.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="启动bootchart.png"></p>
+<table>
+<thead>
+<tr>
+<th>重要节点</th>
+<th>timestamp</th>
+<th>耗时ms</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>init第一阶段</td>
+<td>0</td>
+<td>1719</td>
+</tr>
+<tr>
+<td>init第二阶段 （mount_all）</td>
+<td></td>
+<td>1441</td>
+</tr>
+<tr>
+<td>zygote</td>
+<td>14.693</td>
+<td></td>
+</tr>
+<tr>
+<td>PreloadClasses</td>
+<td>17.249999</td>
+<td>494</td>
+</tr>
+<tr>
+<td>PreloadResources</td>
+<td>17.314211</td>
+<td>64</td>
+</tr>
+<tr>
+<td>ZygotePreload</td>
+<td>17.356779</td>
+<td>677</td>
+</tr>
+<tr>
+<td>ZygoteInit</td>
+<td>17.385883</td>
+<td>706</td>
+</tr>
+<tr>
+<td>InitBeforeStartServices</td>
+<td>17.749919</td>
+<td>171</td>
+</tr>
+<tr>
+<td>StartServices</td>
+<td>34.535993(done)</td>
+<td>12756</td>
+</tr>
+<tr>
+<td>Starting phase 100</td>
+<td>17.841818</td>
+<td></td>
+</tr>
+<tr>
+<td>Starting phase 480</td>
+<td>33.393858</td>
+<td>15552</td>
+</tr>
+<tr>
+<td>Starting phase 500</td>
+<td>33.398361</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Starting phase 520</td>
+<td>33.464118</td>
+<td>66</td>
+</tr>
+<tr>
+<td>Starting phase 550</td>
+<td>33.468068</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Starting phase 600</td>
+<td>34.415950</td>
+<td>948</td>
+</tr>
+<tr>
+<td>Starting phase 1000</td>
+<td>36.027039</td>
+<td>1611</td>
+</tr>
+<tr>
+<td>boot_animation_done</td>
+<td>36.023854(done)</td>
+<td></td>
+</tr>
+<tr>
+<td>FallbackHome</td>
+<td>36.028943</td>
+<td>1344</td>
+</tr>
+<tr>
+<td>LauncherActivity</td>
+<td>37.697186</td>
+<td>14499</td>
+</tr>
+<tr>
+<td>SystemUserUnlock</td>
+<td>37.515143</td>
+<td>1391</td>
+</tr>
+</tbody></table>
+<p><strong>当前Android系统启动时间为：52s !</strong>  加上QNX系统启动应该会在60s以上。</p>
+<p>从以上启动bootchart图、启动时间戳和耗时，可以看出有三个大耗时点需要调查。</p>
+<ul>
+<li>需要调查为什么<strong>14.69s</strong>的时候才启动Zygote</li>
+<li>需要调查哪个服务启动阻塞，导致启动延迟近<strong>12s</strong></li>
+<li>需要调查Launcher应用启动为什么耗费<strong>14.5s</strong></li>
+</ul>
+<h4 id="2-2-内存"><a href="#2-2-内存" class="headerlink" title="2.2 内存"></a>2.2 内存</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-1c0e7e903de5e26f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="MemTotal.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-1553541f83870522.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="MemAvailable.png"></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>最大值</th>
+<th>最小值</th>
+<th>平均值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>系统总内存</td>
+<td>6241M</td>
+<td>6241M</td>
+<td>6241M</td>
+</tr>
+<tr>
+<td>系统可用内存</td>
+<td>3093M</td>
+<td>1505M</td>
+<td>1897M</td>
+</tr>
+</tbody></table>
+<p><strong>小结：</strong></p>
+<ul>
+<li>从当前系统整体来看，运行1.6小时，整体最低还剩1.5G左右，如果长时间运行，加上应用内存泄露，内存低于900M会触发系统LMK杀进程机制。<strong>如果触发LMK机制，媒体等应用占大内存的应用如果在后台就有可能被系统杀掉。</strong></li>
+</ul>
+<h4 id="2-3-cpu"><a href="#2-3-cpu" class="headerlink" title="2.3 cpu"></a>2.3 cpu</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-2527a4ca5200e25b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="TotalCpu.png"></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>峰值</th>
+<th>最小值</th>
+<th>平均值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>系统CPU占用</td>
+<td>376%</td>
+<td>87%</td>
+<td>227%</td>
+</tr>
+</tbody></table>
+<p><strong>小结：</strong></p>
+<ul>
+<li>monkey模拟用户正常使用场景，CPU峰值为376%，49.35K DMIPS从图中看峰值出现的次数不多，说明当前系统CPU压力属于正常范围。后续需要观察压力测试CPU表现。</li>
+<li>平均值为227%，占用Android分到算力的0.567，处于0.7健康值以下，需进一步看静态压力测试均值表现。</li>
+</ul>
+<h4 id="2-4-view"><a href="#2-4-view" class="headerlink" title="2.4 view"></a>2.4 view</h4><p>系统在某个时刻加载View的个数，可以侧面反应系统卡顿和应用的卡顿情况，如果一个进程界面view个数越多，那界面出现丢帧卡顿的概率会越高。官方推荐一个界面的view个数不超过80个对象。该值为参考值，需要根据需求以及应用本身布局、背景、RecycleView过度加载view等很多因素有关，如果超过80个对象，需要应用先自查是否确有那么多View对象的必要。</p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-d76e418f6015be2b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="TotalView.png"></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>峰值</th>
+<th>最低值</th>
+<th>平均值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>系统总view个数</td>
+<td>2970</td>
+<td>583</td>
+<td>2216</td>
+</tr>
+</tbody></table>
+<p><strong>小结：</strong></p>
+<ul>
+<li>从系统中总view均值来看，系统内存中缓存的view个数2216个，此值虽然不能反应系统是否卡顿，但是可以看出系<strong>统内存大量被占用的元凶就是View个数过多</strong>，因为通常一个应用最占内存的对象就是Bitmap对象。</li>
+<li><strong>每个应用FO需要根据后续小节对每个进程View个数超过80个的情况进程自查。</strong></li>
+</ul>
+<h4 id="2-5-IO性能"><a href="#2-5-IO性能" class="headerlink" title="2.5 IO性能"></a>2.5 IO性能</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-6d4eebdc5bb20236.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="IOW.png"></p>
+<p>从上图中看，整个检测周期中IOW都比较低，说明当前CPU和IO都比较健康，暂时没有出现IO瓶颈现象。</p>
+<h3 id="3-应用内存问题暴露"><a href="#3-应用内存问题暴露" class="headerlink" title="3 应用内存问题暴露"></a>3 应用内存问题暴露</h3><p>该章节所有图横坐标单位为检测周期，纵坐标为应用内存大小，单位：M。</p>
+<h4 id="3-1-语音助理"><a href="#3-1-语音助理" class="headerlink" title="3.1 语音助理"></a>3.1 语音助理</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-f89e538aaeb91b0a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="speech.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>424</td>
+<td>337</td>
+<td>352</td>
+<td>存在</td>
+<td>无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li><p>调查部分功能加载大量资源到内存的情况，看是否可以减少此部分资源加载，或者拆分资源加载，当前看有一次性加载80M左右资源到内存的情况。</p>
+</li>
+<li><p>大内存分配用对象池提高对象复用率。</p>
+</li>
+</ul>
+<h4 id="3-2-媒体"><a href="#3-2-媒体" class="headerlink" title="3.2 媒体"></a>3.2 媒体</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-e46e560bd6cd4d3a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="mediax.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>311</td>
+<td>151</td>
+<td>269</td>
+<td>存在</td>
+<td>无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>RecycleView按需加载bitmap，不要全部加载到内存中。</li>
+<li>大内存分配用对象池提高对象复用率。</li>
+<li>从151M跳到230M左右，再跳到290M左右一定是大量Bitmap加载，需要查看图片是否按需加载，布局是否合理，界面布局中是否有不必要背景，一个全局背景占用内存：1920 * 1080 * 4 = 8.1M。</li>
+</ul>
+<h4 id="3-2-Launcher"><a href="#3-2-Launcher" class="headerlink" title="3.2 Launcher"></a>3.2 Launcher</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-b3e61b71905f8f33.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Launcher.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>297</td>
+<td>120</td>
+<td>219</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>monkey跑单个应用保证稳定性。</li>
+<li>确认大内存分配的场景，加载的文件是否可以拆分。</li>
+<li>内存抖动使用对象池来提升对象复用。</li>
+</ul>
+<h4 id="3-3-车辆设置"><a href="#3-3-车辆设置" class="headerlink" title="3.3 车辆设置"></a>3.3 车辆设置</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-18db78eb8e0e47a1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="carsettings.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>112</td>
+<td>83</td>
+<td>101</td>
+<td>存在</td>
+<td>存在</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>使用leakcanary修复内存泄露问题。</li>
+<li>调查阶梯内存情况，使用对象池增加对象复用。</li>
+</ul>
+<h4 id="3-4-systemui"><a href="#3-4-systemui" class="headerlink" title="3.4 systemui"></a>3.4 systemui</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-16fd61f1e4879da5.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="systemui.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>97</td>
+<td>73</td>
+<td>83</td>
+<td>少量</td>
+<td>无</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>有一处出校阶梯内存，调查出现大对象分配的场景。</li>
+</ul>
+<h4 id="3-5-avdc"><a href="#3-5-avdc" class="headerlink" title="3.5 avdc"></a>3.5 avdc</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-a6d12495989f0e04.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="avdc.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>87</td>
+<td>22</td>
+<td>61</td>
+<td>存在</td>
+<td>无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>单应用monkey跑稳定性</li>
+<li>调查大对象分配场景。</li>
+</ul>
+<h4 id="3-6-account"><a href="#3-6-account" class="headerlink" title="3.6 account"></a>3.6 account</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-4ab69766afc08fca.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="account.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>76</td>
+<td>15</td>
+<td>54</td>
+<td>存在</td>
+<td>存在</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<p>1.使用leakcanary修复内存泄露问题。</p>
+<p>2.调查大内存分配场景，使用对象池解决内存抖动。是否有频繁分配内存的情况。</p>
+<h4 id="3-7-输入法"><a href="#3-7-输入法" class="headerlink" title="3.7 输入法"></a>3.7 输入法</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-635a980f4e85910e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="inputmethod.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>63</td>
+<td>30</td>
+<td>50</td>
+<td>少量</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<p>1.使用leakcanary修复内存泄露问题。</p>
+<p>2.调查出现阶梯内存是否是因为在后台界面被kill的情况。</p>
+<h4 id="3-8-安全助手"><a href="#3-8-安全助手" class="headerlink" title="3.8 安全助手"></a>3.8 安全助手</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-6c99cc1993f14355.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="ids.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>83</td>
+<td>16</td>
+<td>49</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<p>1.使用leakcanary修复内存泄露问题。</p>
+<p>2.调查大对象分配情况。</p>
+<p>3.monkey单跑应用稳定性</p>
+<h4 id="3-9-场景引擎"><a href="#3-9-场景引擎" class="headerlink" title="3.9 场景引擎"></a>3.9 场景引擎</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-aef7af62d1c0544c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="scenesengien.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>51</td>
+<td>36</td>
+<td>43</td>
+<td>少量</td>
+<td>无</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>存在少量大对象分配的情况，调查是否可以复用。</li>
+</ul>
+<h4 id="3-10-设置"><a href="#3-10-设置" class="headerlink" title="3.10 设置"></a>3.10 设置</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-5c5ea6e2f1b8d377.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="settings.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>83</td>
+<td>0</td>
+<td>41</td>
+<td>存在</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>monkey跑稳定性</li>
+<li>调查大内存分配场景，使用对象池解决内存抖动。</li>
+</ul>
+<h4 id="3-11-dvr"><a href="#3-11-dvr" class="headerlink" title="3.11 dvr"></a>3.11 dvr</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-21f7538b4af76cb8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="dvr.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>44</td>
+<td>23</td>
+<td>33</td>
+<td>存在</td>
+<td>无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查是否是界面到后台被回收。</li>
+</ul>
+<h4 id="3-12-mediax-remote"><a href="#3-12-mediax-remote" class="headerlink" title="3.12 mediax:remote"></a>3.12 mediax:remote</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-0701c15d382896b2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="mediax_remote.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>40</td>
+<td>26</td>
+<td>33</td>
+<td>存在</td>
+<td>无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议:</strong></p>
+<h4 id="3-13-GCS"><a href="#3-13-GCS" class="headerlink" title="3.13 GCS"></a>3.13 GCS</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-c85175ccd5d9ae51.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cloud_app.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>39</td>
+<td>23</td>
+<td>32</td>
+<td>少量</td>
+<td>少量</td>
+<td>少量</td>
+</tr>
+</tbody></table>
+<h5 id="优化建议："><a href="#优化建议：" class="headerlink" title="优化建议："></a>优化建议：</h5><ul>
+<li>调查针刺内存是否是因为隐藏界面被调起的情况。</li>
+</ul>
+<h4 id="3-14-msgcenter"><a href="#3-14-msgcenter" class="headerlink" title="3.14 msgcenter"></a>3.14 msgcenter</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-870dde675ec483a1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="msgcenter.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>47</td>
+<td>26</td>
+<td>32</td>
+<td>存在</td>
+<td>无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查阶梯内存出现的原因。</li>
+<li>monkey跑应用稳定性。</li>
+</ul>
+<h4 id="3-15-诊断"><a href="#3-15-诊断" class="headerlink" title="3.15 诊断"></a>3.15 诊断</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-fb6a9822a86d1df6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="diagnostic.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>40</td>
+<td>25</td>
+<td>28</td>
+<td>少量</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象分配场景。</li>
+</ul>
+<h4 id="3-16-carlife"><a href="#3-16-carlife" class="headerlink" title="3.16 carlife"></a>3.16 carlife</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-a09ae1c9321032de.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="carlife.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>33</td>
+<td>12</td>
+<td>25</td>
+<td>少量</td>
+<td>少量</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查阶梯内存出现的场景是否是界面被回收所致。</li>
+</ul>
+<h4 id="3-17-Bluetooth"><a href="#3-17-Bluetooth" class="headerlink" title="3.17 Bluetooth"></a>3.17 Bluetooth</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-90034692948871d9.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="bluetooth.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>34</td>
+<td>19</td>
+<td>25</td>
+<td>少量</td>
+<td>无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查大对象分配的场景。</li>
+</ul>
+<h4 id="3-18-engineMode"><a href="#3-18-engineMode" class="headerlink" title="3.18 engineMode"></a>3.18 engineMode</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-663fb015a0d87d01.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="engienMode.png"></p>
+<table>
+<thead>
+<tr>
+<th>最大内存</th>
+<th>最小内存</th>
+<th>平均内存</th>
+<th>内存抖动</th>
+<th>内存泄露</th>
+<th>大内存分配</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>25</td>
+<td>17</td>
+<td>21</td>
+<td>少量</td>
+<td>无</td>
+<td>存在</td>
+</tr>
+</tbody></table>
+<p><strong>优化建议：</strong></p>
+<ul>
+<li>调查代码大对象分配的场景。</li>
+</ul>
+<h3 id="4-应用view"><a href="#4-应用view" class="headerlink" title="4 应用view"></a>4 应用view</h3><p>View过多会直接拉长绘制三大流程的时间，从而导致丢帧，最终给用户的感觉就是<code>滑动卡顿</code>，<code>界面启动慢</code>,<code>滑动响应慢</code>等现象。因此此章节列出view对象创建比较多的应用，针对view多的问题，应用先自身进行一轮优化，优化方向可以参考：</p>
+<ul>
+<li>RecycleView按需加载，不要将所有链接的图片都加载到内存中，按需求设置一个列队，更具用户滑动需求，加载队列的链接。</li>
+<li>界面布局是否重叠，或者重叠过深。</li>
+<li><strong>设置了不必要的背景颜色或者背景图片</strong>，此项请大家严格看，目前发现很多代码中都会有此问题，给layout设置背景，或者给控件设置不必要的背景。</li>
+</ul>
+<p>一个应用界面不应该超过80个View对象，超过了，请务必确实是否有必要。<strong>内存占用过大，LMK在adj值相等的情况下，会优先杀内存大的应用！！</strong></p>
+<h4 id="4-1-常见的场景"><a href="#4-1-常见的场景" class="headerlink" title="4.1 常见的场景"></a>4.1 常见的场景</h4><h5 id="4-1-1-阶梯view"><a href="#4-1-1-阶梯view" class="headerlink" title="4.1.1 阶梯view"></a>4.1.1 阶梯view</h5><p>如果出现阶梯view，说明当前界面退到后台就被回收了，下次启动需要重新加载界面，出现这种情况请<strong>务必</strong>检查view是否过多，是否必要，检测方法详见之前发过的一份卡顿分析文档《聚媒体应用卡顿分析.pdf》。</p>
+<h5 id="4-1-2-针型View"><a href="#4-1-2-针型View" class="headerlink" title="4.1.2 针型View"></a>4.1.2 针型View</h5><p>出现针型view图，考虑是否有弹窗，针越长，弹窗是否view过于复杂。</p>
+<h5 id="4-1-3-杂乱阶梯View"><a href="#4-1-3-杂乱阶梯View" class="headerlink" title="4.1.3 杂乱阶梯View"></a>4.1.3 杂乱阶梯View</h5><p>出现杂乱阶梯View考虑有多个界面，每个界面的view都需要分析一下。一个layout或者一个控件就是一个view。杂乱的柱子越高，说明有界面view越复杂。</p>
+<h4 id="4-2-需要自查的应用"><a href="#4-2-需要自查的应用" class="headerlink" title="4.2 需要自查的应用"></a>4.2 需要自查的应用</h4><p><img src="https://upload-images.jianshu.io/upload_images/13838098-c792b80219cbde7b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="mediax.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-fcb7d6166233cf52.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="settings.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-ac9ccd9af956a520.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="systemui.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-1192650578593ad2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Launcher.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-bc33183a289923f3.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="carsettings.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-9725d6da3b1ab588.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="ids.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-d89ad0983d43faab.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="speechclient.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-13a6a16d29dd8ef5.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="inputmethod.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-743839707355ad73.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="globalsearch.png"></p>
+<p><img src="https://upload-images.jianshu.io/upload_images/13838098-352b4f68c60c7fbc.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="diagnostic.png"></p>
+<h3 id="5-启动时间"><a href="#5-启动时间" class="headerlink" title="5 启动时间"></a>5 启动时间</h3><p>应用启动时间直接影响用户体验，针对轻量级严格要求在1秒之内，Google建议在500ms内，针对超过1秒的应用的应用需要分析启动耗时原因，哪些资源是必须加载的。详细方法可以参考《GOS Launcher启动耗时分析以及优化建议》。</p>
+<h4 id="5-1-需要自查的应用"><a href="#5-1-需要自查的应用" class="headerlink" title="5.1 需要自查的应用"></a>5.1 需要自查的应用</h4><table>
+<thead>
+<tr>
+<th>应用名称</th>
+<th>包名</th>
+<th>启动均值(ms)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Launcher</td>
+<td>com.gxatek.cockpit.launcher</td>
+<td>14499</td>
+</tr>
+<tr>
+<td>聚合媒体（在线、本地音乐、本地电台）</td>
+<td>com.iflytek.autofly.mediax</td>
+<td>1888</td>
+</tr>
+<tr>
+<td>爱奇艺</td>
+<td>com.qiyi.video.pad</td>
+<td>1014</td>
+</tr>
+<tr>
+<td>车服务</td>
+<td>com.gxatek.cockpit.carservice</td>
+<td>750</td>
+</tr>
+<tr>
+<td>Setting</td>
+<td>com.gxatek.cockpit.settings</td>
+<td>632</td>
+</tr>
+<tr>
+<td>天气</td>
+<td>com.gxatek.cockpit.weather</td>
+<td>621</td>
+</tr>
+</tbody></table>
+<p>目前很多功能还没有完全，是测试界面。</p>
+<h3 id="6-APK包大小"><a href="#6-APK包大小" class="headerlink" title="6 APK包大小"></a>6 APK包大小</h3><p>APK包大小会直接影响系统包大小，还会直接拉慢系统启动过程中PKMS扫描APK包的速度，导致提供启动耗时增加，更多的是增加了升级包的大小。</p>
+<p>Google推荐的APK包大小最大不建议超过150M。因此需要应用先自查一轮哪些资源可以废弃，哪些图片可以转化为webp。详细优化方案见《应用APK瘦身调查与优化方案》。</p>
+<h4 id="6-1-需要自查的应用"><a href="#6-1-需要自查的应用" class="headerlink" title="6.1 需要自查的应用"></a>6.1 需要自查的应用</h4><table>
+<thead>
+<tr>
+<th>应用名称</th>
+<th>包名</th>
+<th>包大小</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>聚合媒体（在线、本地音乐、本地电台）</td>
+<td>com.iflytek.autofly.mediax</td>
+<td>131M</td>
+</tr>
+<tr>
+<td>Launcher</td>
+<td>com.gxatek.cockpit.launcher</td>
+<td>171M</td>
+</tr>
+<tr>
+<td>语音助理</td>
+<td>com.iflytek.cutefly.speechclient.hmi</td>
+<td>196M</td>
+</tr>
+<tr>
+<td>输入法</td>
+<td>com.iflytek.inputmethod</td>
+<td>33M</td>
+</tr>
+<tr>
+<td>天气</td>
+<td>com.gxatek.cockpit.weather</td>
+<td>34M</td>
+</tr>
+<tr>
+<td>我的车</td>
+<td>com.gxatek.cockpit.carsettings</td>
+<td>38M</td>
+</tr>
+<tr>
+<td>消息中心服务</td>
+<td>com.gxa.service.messagecenter</td>
+<td>52M</td>
+</tr>
+<tr>
+<td>车服务</td>
+<td>com.gxatek.cockpit.carservice</td>
+<td>56M</td>
+</tr>
+<tr>
+<td>小程序容器</td>
+<td>com.gxatek.cockpit.miniprogram</td>
+<td>56M</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200">Jack Ou</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200">https://www.jianshu.com/u/10058d760200</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">此文章版权归Jack Ou所有，如有转载，请註明来自原作者</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Android/">Android</a><a class="post-meta__tags" href="/tags/%E7%B3%BB%E7%BB%9F%E4%BC%98%E5%8C%96/">系统优化</a><a class="post-meta__tags" href="/tags/%E6%95%B4%E4%BD%93%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/">整体性能分析</a></div><div class="post_share"><div class="social-share" data-image="https://upload-images.jianshu.io/upload_images/13838098-68e128c62e879dbb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" data-sites="wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏<div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="微信"/></a><div class="post-qr-code-desc">微信</div></li><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="支付宝"/></a><div class="post-qr-code-desc">支付宝</div></li></ul></div></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/2021/12/07/Linux%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6%E5%88%86%E6%9E%903-%E8%B0%83%E5%BA%A6%E5%87%BD%E6%95%B0/"><img class="next-cover" src="https://upload-images.jianshu.io/upload_images/13838098-5d55fd74e9c304b9.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Linux进程调度分析3-调度函数</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2021/10/20/车机整体应用性能问题/" title="车机整体应用性能问题"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-10-20</div><div class="title">车机整体应用性能问题</div></div></a></div><div><a href="/2021/09/17/优化开机动画-系统优化/" title="优化开机动画-系统优化"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-09-17</div><div class="title">优化开机动画-系统优化</div></div></a></div><div><a href="/2021/10/13/优化第一版启动耗时分析/" title="优化第一版启动耗时分析"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-10-13</div><div class="title">优化第一版启动耗时分析</div></div></a></div><div><a href="/2021/11/03/车机性能参数对比/" title="车机性能参数对比"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-11-03</div><div class="title">车机性能参数对比</div></div></a></div><div><a href="/2021/10/25/聚媒体内存问题分析/" title="聚媒体内存问题分析"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-10-25</div><div class="title">聚媒体内存问题分析</div></div></a></div><div><a href="/2021/10/15/聚媒体应用卡顿分析/" title="聚媒体应用卡顿分析"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-e1177de6d391bef7.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-10-15</div><div class="title">聚媒体应用卡顿分析</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-info-avatar is-center"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">Jack Ou</div><div class="author-info__description">努力成为靠谱之人：凡事有交代，件件有着落，事事有回音</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">144</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">103</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">9</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200"><i class="fad fa-sheep"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/oujie123" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://www.jianshu.com/u/10058d760200" target="_blank" title="简书"><i class="fas fa-book-open"></i></a><a class="social-icon" href="https://blog.csdn.net/u010248147" target="_blank" title="CSDN"><i class="fab fa-microblog"></i></a><a class="social-icon" href="mailto:jackou4work@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎收看我的博客，很高兴与您一同成长！</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%83%8C%E6%99%AF"><span class="toc-number">1.</span> <span class="toc-text">1 背景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E7%B3%BB%E7%BB%9F%E6%80%A7%E8%83%BD%E5%8F%82%E6%95%B0%E5%88%86%E6%9E%90"><span class="toc-number">2.</span> <span class="toc-text">2.系统性能参数分析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-%E5%90%AF%E5%8A%A8%E8%80%97%E6%97%B6"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 启动耗时</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-%E5%86%85%E5%AD%98"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 内存</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-3-cpu"><span class="toc-number">2.3.</span> <span class="toc-text">2.3 cpu</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-4-view"><span class="toc-number">2.4.</span> <span class="toc-text">2.4 view</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-5-IO%E6%80%A7%E8%83%BD"><span class="toc-number">2.5.</span> <span class="toc-text">2.5 IO性能</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E9%97%AE%E9%A2%98%E6%9A%B4%E9%9C%B2"><span class="toc-number">3.</span> <span class="toc-text">3 应用内存问题暴露</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-1-%E8%AF%AD%E9%9F%B3%E5%8A%A9%E7%90%86"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 语音助理</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-%E5%AA%92%E4%BD%93"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 媒体</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-Launcher"><span class="toc-number">3.3.</span> <span class="toc-text">3.2 Launcher</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-3-%E8%BD%A6%E8%BE%86%E8%AE%BE%E7%BD%AE"><span class="toc-number">3.4.</span> <span class="toc-text">3.3 车辆设置</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-4-systemui"><span class="toc-number">3.5.</span> <span class="toc-text">3.4 systemui</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-5-avdc"><span class="toc-number">3.6.</span> <span class="toc-text">3.5 avdc</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-6-account"><span class="toc-number">3.7.</span> <span class="toc-text">3.6 account</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-7-%E8%BE%93%E5%85%A5%E6%B3%95"><span class="toc-number">3.8.</span> <span class="toc-text">3.7 输入法</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-8-%E5%AE%89%E5%85%A8%E5%8A%A9%E6%89%8B"><span class="toc-number">3.9.</span> <span class="toc-text">3.8 安全助手</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-9-%E5%9C%BA%E6%99%AF%E5%BC%95%E6%93%8E"><span class="toc-number">3.10.</span> <span class="toc-text">3.9 场景引擎</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-10-%E8%AE%BE%E7%BD%AE"><span class="toc-number">3.11.</span> <span class="toc-text">3.10 设置</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-11-dvr"><span class="toc-number">3.12.</span> <span class="toc-text">3.11 dvr</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-12-mediax-remote"><span class="toc-number">3.13.</span> <span class="toc-text">3.12 mediax:remote</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-13-GCS"><span class="toc-number">3.14.</span> <span class="toc-text">3.13 GCS</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E4%BC%98%E5%8C%96%E5%BB%BA%E8%AE%AE%EF%BC%9A"><span class="toc-number">3.14.1.</span> <span class="toc-text">优化建议：</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-14-msgcenter"><span class="toc-number">3.15.</span> <span class="toc-text">3.14 msgcenter</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-15-%E8%AF%8A%E6%96%AD"><span class="toc-number">3.16.</span> <span class="toc-text">3.15 诊断</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-16-carlife"><span class="toc-number">3.17.</span> <span class="toc-text">3.16 carlife</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-17-Bluetooth"><span class="toc-number">3.18.</span> <span class="toc-text">3.17 Bluetooth</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-18-engineMode"><span class="toc-number">3.19.</span> <span class="toc-text">3.18 engineMode</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E5%BA%94%E7%94%A8view"><span class="toc-number">4.</span> <span class="toc-text">4 应用view</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#4-1-%E5%B8%B8%E8%A7%81%E7%9A%84%E5%9C%BA%E6%99%AF"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 常见的场景</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#4-1-1-%E9%98%B6%E6%A2%AFview"><span class="toc-number">4.1.1.</span> <span class="toc-text">4.1.1 阶梯view</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-1-2-%E9%92%88%E5%9E%8BView"><span class="toc-number">4.1.2.</span> <span class="toc-text">4.1.2 针型View</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-1-3-%E6%9D%82%E4%B9%B1%E9%98%B6%E6%A2%AFView"><span class="toc-number">4.1.3.</span> <span class="toc-text">4.1.3 杂乱阶梯View</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4-2-%E9%9C%80%E8%A6%81%E8%87%AA%E6%9F%A5%E7%9A%84%E5%BA%94%E7%94%A8"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 需要自查的应用</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E5%90%AF%E5%8A%A8%E6%97%B6%E9%97%B4"><span class="toc-number">5.</span> <span class="toc-text">5 启动时间</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#5-1-%E9%9C%80%E8%A6%81%E8%87%AA%E6%9F%A5%E7%9A%84%E5%BA%94%E7%94%A8"><span class="toc-number">5.1.</span> <span class="toc-text">5.1 需要自查的应用</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-APK%E5%8C%85%E5%A4%A7%E5%B0%8F"><span class="toc-number">6.</span> <span class="toc-text">6 APK包大小</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#6-1-%E9%9C%80%E8%A6%81%E8%87%AA%E6%9F%A5%E7%9A%84%E5%BA%94%E7%94%A8"><span class="toc-number">6.1.</span> <span class="toc-text">6.1 需要自查的应用</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2021/12/08/20211208%E8%BD%A6%E6%9C%BA%E6%95%B4%E4%BD%93%E6%80%A7%E8%83%BD%E6%8A%A5%E5%91%8A/" title="20211208车机整体性能报告"><img src="https://upload-images.jianshu.io/upload_images/13838098-68e128c62e879dbb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="20211208车机整体性能报告"/></a><div class="content"><a class="title" href="/2021/12/08/20211208%E8%BD%A6%E6%9C%BA%E6%95%B4%E4%BD%93%E6%80%A7%E8%83%BD%E6%8A%A5%E5%91%8A/" title="20211208车机整体性能报告">20211208车机整体性能报告</a><time datetime="2021-12-08T03:10:35.000Z" title="发表于 2021-12-08 11:10:35">2021-12-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/12/07/Linux%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6%E5%88%86%E6%9E%903-%E8%B0%83%E5%BA%A6%E5%87%BD%E6%95%B0/" title="Linux进程调度分析3-调度函数"><img src="https://upload-images.jianshu.io/upload_images/13838098-5d55fd74e9c304b9.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Linux进程调度分析3-调度函数"/></a><div class="content"><a class="title" href="/2021/12/07/Linux%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6%E5%88%86%E6%9E%903-%E8%B0%83%E5%BA%A6%E5%87%BD%E6%95%B0/" title="Linux进程调度分析3-调度函数">Linux进程调度分析3-调度函数</a><time datetime="2021-12-07T15:58:48.000Z" title="发表于 2021-12-07 23:58:48">2021-12-07</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/12/07/Linux%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6%E5%88%86%E6%9E%902-%E8%B0%83%E5%BA%A6%E7%AE%97%E6%B3%95/" title="Linux进程调度分析1-调度算法"><img src="https://upload-images.jianshu.io/upload_images/13838098-5d55fd74e9c304b9.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Linux进程调度分析1-调度算法"/></a><div class="content"><a class="title" href="/2021/12/07/Linux%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6%E5%88%86%E6%9E%902-%E8%B0%83%E5%BA%A6%E7%AE%97%E6%B3%95/" title="Linux进程调度分析1-调度算法">Linux进程调度分析1-调度算法</a><time datetime="2021-12-07T15:24:48.000Z" title="发表于 2021-12-07 23:24:48">2021-12-07</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/12/07/Linux%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6%E5%88%86%E6%9E%901-%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/" title="Linux进程调度分析1-调度策略"><img src="https://upload-images.jianshu.io/upload_images/13838098-5d55fd74e9c304b9.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Linux进程调度分析1-调度策略"/></a><div class="content"><a class="title" href="/2021/12/07/Linux%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6%E5%88%86%E6%9E%901-%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/" title="Linux进程调度分析1-调度策略">Linux进程调度分析1-调度策略</a><time datetime="2021-12-07T14:40:04.000Z" title="发表于 2021-12-07 22:40:04">2021-12-07</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2021/12/01/Selinux%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E%E4%B9%A6/" title="Selinux配置说明书"><img src="https://upload-images.jianshu.io/upload_images/13838098-ceb8ed2a66722632.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Selinux配置说明书"/></a><div class="content"><a class="title" href="/2021/12/01/Selinux%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E%E4%B9%A6/" title="Selinux配置说明书">Selinux配置说明书</a><time datetime="2021-12-01T03:31:19.000Z" title="发表于 2021-12-01 11:31:19">2021-12-01</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-68e128c62e879dbb.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By Jack Ou</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi, welcome to my <a href="https://oujie123.github.io/">blog</a>!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><div class="search-dialog__title" id="local-search-title">本地搜索</div><div id="local-input-panel"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div></div><hr/><div id="local-search-results"></div><span class="search-close-button"><i class="fas fa-times"></i></span></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script>function panguFn () {
+  if (typeof pangu === 'object') pangu.spacingElementById('content-inner')
+  else {
+    getScript('https://cdn.jsdelivr.net/npm/pangu/dist/browser/pangu.min.js')
+      .then(() => {
+        pangu.spacingElementById('content-inner')
+      })
+  }
+}
+
+function panguInit () {
+  if (false){
+    GLOBAL_CONFIG_SITE.isPost && panguFn()
+  } else {
+    panguFn()
+  }
+}
+
+document.addEventListener('DOMContentLoaded', panguInit)</script><script src="/js/search/local-search.js"></script><script>var preloader = {
+  endLoading: () => {
+    document.body.style.overflow = 'auto';
+    document.getElementById('loading-box').classList.add("loaded")
+  },
+  initLoading: () => {
+    document.body.style.overflow = '';
+    document.getElementById('loading-box').classList.remove("loaded")
+
+  }
+}
+window.addEventListener('load',()=> {preloader.endLoading()})</script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="true" data-click="true"></script><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-fluttering-ribbon.min.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="99" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-nest.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/activate-power-mode.min.js"></script><script>POWERMODE.colorful = true;
+POWERMODE.shake = true;
+POWERMODE.mobile = true;
+document.body.addEventListener('input', POWERMODE);
+</script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-heart.min.js" async="async" mobile="true"></script><script id="click-show-text" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-show-text.min.js" data-mobile="true" data-text="I,LOVE,YOU" data-fontsize="15px" data-random="false" async="async"></script></div></body></html>
