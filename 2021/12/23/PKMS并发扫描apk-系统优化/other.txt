@@ -1,0 +1,14 @@
+Line 2: package:/vendor/app/SSGTelemetryService/SSGTelemetryService.apk=com.qualcomm.qti.qms.service.telemetry
+Line 8: package:/vendor/app/com.qualcomm.qti.improvetouch.service/com.qualcomm.qti.improvetouch.service.apk=com.qualcomm.qti.improvetouch.service
+Line 23: package:/vendor/app/CoreSystemServer/CoreSystemServer.apk=com.core.system.service
+Line 38: package:/vendor/app/ConnectionSecurityService/ConnectionSecurityService.apk=com.qualcomm.qti.qms.service.connectionsecurity
+Line 94: package:/vendor/app/improveTouchStudio/improveTouchStudio.apk=com.qualcomm.qti.improvetouch
+Line 184: package:/vendor/app/PowerOffAlarm/PowerOffAlarm.apk=com.qualcomm.qti.poweroffalarm
+Line 190: package:/vendor/app/TrustZoneAccessService/TrustZoneAccessService.apk=com.qualcomm.qti.qms.service.trustzoneaccess
+Line 193: package:/vendor/app/TimeService/TimeService.apk=com.qualcomm.timeservice
+Line 6: package:/vendor/overlay/DisplayCutoutEmulationCorner/DisplayCutoutEmulationCornerOverlay.apk=com.android.internal.display.cutout.emulation.corner
+Line 9: package:/vendor/overlay/DisplayCutoutEmulationDouble/DisplayCutoutEmulationDoubleOverlay.apk=com.android.internal.display.cutout.emulation.double
+Line 56: package:/vendor/overlay/DisplayCutoutEmulationTall/DisplayCutoutEmulationTallOverlay.apk=com.android.internal.display.cutout.emulation.tall
+Line 79: package:/vendor/overlay/SysuiDarkTheme/SysuiDarkThemeOverlay.apk=com.android.systemui.theme.dark
+Line 83: package:/vendor/overlay/ExtConnectivityServiceOverlay.apk=com.gxa.car.ncm.overlay
+frameworks-res.apk
