@@ -1,0 +1,286 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CPU性能篇-调查系统的软中断CPU使用率升高情况 | Learn OS concepts by coding them!</title><meta name="keywords" content="CPU性能,CPU使用率"><meta name="author" content="Jack Ou"><meta name="copyright" content="Jack Ou"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="referrer" content="no-referrer"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="本篇文章描述如何调查软中断导致的CPU占用率高。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CPU性能篇-调查系统的软中断CPU使用率升高情况">
+<meta property="og:url" content="https://oujie123.github.io/2022/03/20/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E8%B0%83%E6%9F%A5%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%BD%AF%E4%B8%AD%E6%96%ADCPU%E4%BD%BF%E7%94%A8%E7%8E%87%E5%8D%87%E9%AB%98%E6%83%85%E5%86%B5/index.html">
+<meta property="og:site_name" content="Learn OS concepts by coding them!">
+<meta property="og:description" content="本篇文章描述如何调查软中断导致的CPU占用率高。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="article:published_time" content="2022-03-20T13:12:59.000Z">
+<meta property="article:modified_time" content="2022-03-20T14:00:00.687Z">
+<meta property="article:author" content="Jack Ou">
+<meta property="article:tag" content="性能优化">
+<meta property="article:tag" content="CPU性能">
+<meta property="article:tag" content="CPU使用率">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="shortcut icon" href="https://upload-images.jianshu.io/upload_images/13838098-8a5cd66eafd7c761.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240"><link rel="canonical" href="https://oujie123.github.io/2022/03/20/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E8%B0%83%E6%9F%A5%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%BD%AF%E4%B8%AD%E6%96%ADCPU%E4%BD%BF%E7%94%A8%E7%8E%87%E5%8D%87%E9%AB%98%E6%83%85%E5%86%B5/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":50,"languages":{"author":"作者: Jack Ou","link":"链接: ","source":"来源: Learn OS concepts by coding them!","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: true,
+  islazyload: false,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}
+
+// https://stackoverflow.com/questions/16839698/jquery-getscript-alternative-in-native-javascript
+const getScript = url => new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.async = true
+  script.onerror = reject
+  script.onload = script.onreadystatechange = function() {
+    const loadState = this.readyState
+    if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+    script.onload = script.onreadystatechange = null
+    resolve()
+  }
+  document.head.appendChild(script)
+})</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2022-03-20 22:00:00'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><meta name="generator" content="Hexo 5.3.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">169</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">120</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Learn OS concepts by coding them!</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分栏</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 视频</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">CPU性能篇-调查系统的软中断CPU使用率升高情况</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2022-03-20T13:12:59.000Z" title="发表于 2022-03-20 21:12:59">2022-03-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-03-20T14:00:00.687Z" title="更新于 2022-03-20 22:00:00">2022-03-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">3.3k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>11分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>中断是一种异步的事件处理机制，用来提高系统的并发处理能力。中断事件发生，会触发执行中断处理程序，而中断处理程序被分为上半部和下半部这两个部分。</p>
+<ul>
+<li><p>上半部对应硬中断，用来快速处理中断；</p>
+</li>
+<li><p>下半部对应软中断，用来异步处理上半部未完成的工作。</p>
+</li>
+</ul>
+<p>Linux 中的软中断包括网络收发、定时、调度、RCU 锁等各种类型，我们可以查看 proc 文件系统中的 /proc/softirqs ，观察软中断的运行情况。</p>
+<p>在 Linux 中，每个 CPU 都对应一个软中断内核线程，名字是 ksoftirqd/CPU 编号。当软中断事件的频率过高时，内核线程也会因为 CPU 使用率过高而导致软中断处理不及时，进而引发网络收发延迟、调度缓慢等性能问题。</p>
+<p>软中断 CPU 使用率过高也是一种最常见的性能问题。今天，我就用最常见的反向代理服务器 Nginx 的案例，教你学会分析这种情况。</p>
+<h2 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h2><p>接下来的案例基于 Ubuntu 18.04，也同样适用于其他的 Linux 系统。我使用的案例环境是这样的：</p>
+<ul>
+<li>机器配置：2 CPU、8 GB 内存。</li>
+<li>预先安装 docker、sysstat、sar 、hping3、tcpdump 等工具，比如 apt-get install docker.io sysstat hping3 tcpdump。<br>这里我又用到了三个新工具，sar、 hping3 和 tcpdump，先简单介绍一下：</li>
+<li>sar 是一个系统活动报告工具，既可以实时查看系统的当前活动，又可以配置保存和报告历史统计数据。</li>
+<li>hping3 是一个可以构造 TCP/IP 协议数据包的工具，可以对系统进行安全审计、防火墙测试等。</li>
+<li>tcpdump 是一个常用的网络抓包工具，常用来分析各种网络问题。</li>
+</ul>
+<h2 id="操作"><a href="#操作" class="headerlink" title="操作"></a>操作</h2><p>安装完成后，我们先在第一个终端，执行下面的命令运行案例，也就是一个最基本的 Nginx 应用：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 运行Nginx服务并对外开放80端口</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> docker run -itd --name=nginx -p 80:80 nginx</span></span><br></pre></td></tr></table></figure>
+<p>然后，在第二个终端，使用 curl 访问 Nginx 监听的端口，确认 Nginx 正常启动。假设 192.168.0.30 是 Nginx 所在虚拟机的 IP 地址，运行 curl 命令后你应该会看到下面这个输出界面：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">$</span><span class="bash"> curl http://192.168.0.30/</span></span><br><span class="line">&lt;!DOCTYPE html&gt;</span><br><span class="line">&lt;html&gt;</span><br><span class="line">&lt;head&gt;</span><br><span class="line">&lt;title&gt;Welcome to nginx!&lt;/title&gt;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>接着，还是在第二个终端，我们运行 hping3 命令，来模拟 Nginx 的客户端请求：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> -S参数表示设置TCP协议的SYN（同步序列号），-p表示目的端口为80</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> -i u100表示每隔100微秒发送一个网络帧</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> 注：如果你在实践过程中现象不明显，可以尝试把100调小，比如调成10甚至1</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> hping3 -S -p 80 -i u100 192.168.0.30</span></span><br></pre></td></tr></table></figure>
+<p>现在我们再回到第一个终端，你应该发现了异常。是不是感觉系统响应明显变慢了，即便只是在终端中敲几个回车，都得很久才能得到响应？这个时候应该怎么办呢？</p>
+<p>虽然在运行 hping3 命令时，我就已经告诉你，这是一个 SYN FLOOD 攻击，你肯定也会想到从网络方面入手，来分析这个问题。不过，在实际的生产环境中，没人直接告诉你原因。</p>
+<p>所以，我希望你把 hping3 模拟 SYN FLOOD 这个操作暂时忘掉，然后重新从观察到的问题开始，分析系统的资源使用情况，逐步找出问题的根源。</p>
+<p>那么，该从什么地方入手呢？刚才我们发现，简单的 SHELL 命令都明显变慢了，先看看系统的整体资源使用情况应该是个不错的注意，比如执行下 top 看看是不是出现了 CPU 的瓶颈。我们在第一个终端运行 top 命令，看一下系统整体的资源使用情况。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> top运行后按数字1切换到显示所有CPU</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> top</span></span><br><span class="line">top - 10:50:58 up 1 days, 22:10,  1 user,  load average: 0.00, 0.00, 0.00</span><br><span class="line">Tasks: 122 total,   1 running,  71 sleeping,   0 stopped,   0 zombie</span><br><span class="line"><span class="meta">%</span><span class="bash">Cpu0  :  0.0 us,  0.0 sy,  0.0 ni, 96.7 id,  0.0 wa,  0.0 hi,  3.3 si,  0.0 st</span></span><br><span class="line"><span class="meta">%</span><span class="bash">Cpu1  :  0.0 us,  0.0 sy,  0.0 ni, 95.6 id,  0.0 wa,  0.0 hi,  4.4 si,  0.0 st</span></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND</span><br><span class="line">    7 root      20   0       0      0      0 S   0.3  0.0   0:01.64 ksoftirqd/0</span><br><span class="line">   16 root      20   0       0      0      0 S   0.3  0.0   0:01.97 ksoftirqd/1</span><br><span class="line"> 2663 root      20   0  923480  28292  13996 S   0.3  0.3   4:58.66 docker-containe</span><br><span class="line"> 3699 root      20   0       0      0      0 I   0.3  0.0   0:00.13 kworker/u4:0</span><br><span class="line"> 3708 root      20   0   44572   4176   3512 R   0.3  0.1   0:00.07 top</span><br><span class="line">    1 root      20   0  225384   9136   6724 S   0.0  0.1   0:23.25 systemd</span><br><span class="line">    2 root      20   0       0      0      0 S   0.0  0.0   0:00.03 kthreadd</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>这里你有没有发现异常的现象？我们从第一行开始，逐个看一下：</p>
+<ul>
+<li>平均负载全是 0，就绪队列里面只有一个进程（1 running）。</li>
+<li>每个 CPU 的使用率都挺低，最高的 CPU1 的使用率也只有 4.4%，并不算高。</li>
+<li>再看进程列表，CPU 使用率最高的进程也只有 0.3%，还是不高呀。</li>
+</ul>
+<p>那为什么系统的响应变慢了呢？既然每个指标的数值都不大，那我们就再来看看，这些指标对应的更具体的含义。毕竟，哪怕是同一个指标，用在系统的不同部位和场景上，都有可能对应着不同的性能问题。</p>
+<p>仔细看 top 的输出，两个 CPU 的使用率虽然分别只有 3.3% 和 4.4%，但都用在了软中断上；而从进程列表上也可以看到，CPU 使用率最高的也是软中断进程 ksoftirqd。看起来，软中断有点可疑了。</p>
+<p>根据上一期的内容，既然软中断可能有问题，那你先要知道，究竟是哪类软中断的问题。停下来想想，上一节我们用了什么方法，来判断软中断类型呢？没错，还是 proc 文件系统。观察 /proc/softirqs 文件的内容，你就能知道各种软中断类型的次数。</p>
+<p>不过，这里的各类软中断次数，又是什么时间段里的次数呢？它是系统运行以来的<strong>累积中断次数</strong>。所以我们直接查看文件内容，得到的只是累积中断次数，对这里的问题并没有直接参考意义。因为，这些<strong>中断次数的变化速率</strong>才是我们需要关注的。</p>
+<p>比如，还是在第一个终端，我们运行下面的命令：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">$</span><span class="bash"> watch -d cat /proc/softirqs</span></span><br><span class="line">                    CPU0       CPU1</span><br><span class="line">          HI:          0          0</span><br><span class="line">       TIMER:    1083906    2368646</span><br><span class="line">      NET_TX:         53          9</span><br><span class="line">      NET_RX:    1550643    1916776</span><br><span class="line">       BLOCK:          0          0</span><br><span class="line">    IRQ_POLL:          0          0</span><br><span class="line">     TASKLET:     333637       3930</span><br><span class="line">       SCHED:     963675    2293171</span><br><span class="line">     HRTIMER:          0          0</span><br><span class="line">         RCU:    1542111    1590625</span><br></pre></td></tr></table></figure>
+<p>通过 /proc/softirqs 文件内容的变化情况，你可以发现， <strong>TIMER（定时中断）、NET_RX（网络接收）、SCHED（内核调度）、RCU（RCU 锁）</strong>等这几个软中断都在不停变化。</p>
+<p>其中，NET_RX，也就是网络数据包接收软中断的变化速率最快。而其他几种类型的软中断，是保证 Linux 调度、时钟和临界区保护这些正常工作所必需的，所以它们有一定的变化倒是正常的。</p>
+<p>那么接下来，我们就从网络接收的软中断着手，继续分析。既然是网络接收的软中断，第一步应该就是观察系统的网络接收情况。这里你可能想起了很多网络工具，不过，我推荐今天的主人公工具 sar 。</p>
+<p>sar 可以用来查看系统的网络收发情况，还有一个好处是，不仅可以观察网络收发的吞吐量（BPS，每秒收发的字节数），还可以观察网络收发的 PPS，即每秒收发的网络帧数。</p>
+<p>我们在第一个终端中运行 sar 命令，并添加 -n DEV 参数显示网络收发的报告：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> -n DEV 表示显示网络收发的报告，间隔1秒输出一组数据</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> sar -n DEV 1</span></span><br><span class="line">15:03:46        IFACE   rxpck/s   txpck/s    rxkB/s    txkB/s   rxcmp/s   txcmp/s  rxmcst/s   %ifutil</span><br><span class="line">15:03:47         eth0  12607.00   6304.00    664.86    358.11      0.00      0.00      0.00      0.01</span><br><span class="line">15:03:47      docker0   6302.00  12604.00    270.79    664.66      0.00      0.00      0.00      0.00</span><br><span class="line">15:03:47           lo      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00</span><br><span class="line">15:03:47    veth9f6bbcd   6302.00  12604.00    356.95    664.66      0.00      0.00      0.00      0.05</span><br></pre></td></tr></table></figure>
+<p>对于 sar 的输出界面，我先来简单介绍一下，从左往右依次是：</p>
+<ul>
+<li>第一列：表示报告的时间。</li>
+<li>第二列：IFACE 表示网卡。</li>
+<li>第三、四列：rxpck/s 和 txpck/s 分别表示每秒接收、发送的网络帧数，也就是 PPS。</li>
+<li>第五、六列：rxkB/s 和 txkB/s 分别表示每秒接收、发送的千字节数，也就是 BPS。</li>
+<li>后面的其他参数基本接近 0，显然跟今天的问题没有直接关系，你可以先忽略掉。</li>
+</ul>
+<p>我们具体来看输出的内容，你可以发现：</p>
+<ul>
+<li><p>对网卡 eth0 来说，每秒接收的网络帧数比较大，达到了 12607，而发送的网络帧数则比较小，只有 6304；每秒接收的千字节数只有 664 KB，而发送的千字节数更小，只有 358 KB。</p>
+</li>
+<li><p>docker0 和 veth9f6bbcd 的数据跟 eth0 基本一致，只是发送和接收相反，发送的数据较大而接收的数据较小。这是 Linux 内部网桥转发导致的，你暂且不用深究，只要知道这是系统把 eth0 收到的包转发给 Nginx 服务即可。具体工作原理，我会在后面的网络部分详细介绍。</p>
+</li>
+</ul>
+<p>从这些数据，你有没有发现什么异常的地方？</p>
+<p>既然怀疑是网络接收中断的问题，我们还是重点来看 eth0 ：接收的 PPS 比较大，达到 12607，而接收的 BPS 却很小，只有 664 KB。直观来看网络帧应该都是比较小的，我们稍微计算一下，664*1024/12607 = 54 字节，说明平均每个网络帧只有 54 字节，这显然是很小的网络帧，也就是我们通常所说的小包问题。</p>
+<p>那么，有没有办法知道这是一个什么样的网络帧，以及从哪里发过来的呢？</p>
+<p>使用 tcpdump 抓取 eth0 上的包就可以了。我们事先已经知道， Nginx 监听在 80 端口，它所提供的 HTTP 服务是基于 TCP 协议的，所以我们可以指定 TCP 协议和 80 端口精确抓包。</p>
+<p>接下来，我们在第一个终端中运行 tcpdump 命令，通过 -i eth0 选项指定网卡 eth0，并通过 tcp port 80 选项指定 TCP 协议的 80 端口：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> -i eth0 只抓取eth0网卡，-n不解析协议名和主机名</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> tcp port 80表示只抓取tcp协议并且端口号为80的网络帧</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> tcpdump -i eth0 -n tcp port 80</span></span><br><span class="line">15:11:32.678966 IP 192.168.0.2.18238 &gt; 192.168.0.30.80: Flags [S], seq 458303614, win 512, length 0</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>从 tcpdump 的输出中，你可以发现</p>
+<ul>
+<li>192.168.0.2.18238 &gt; 192.168.0.30.80 ，表示网络帧从 192.168.0.2 的 18238 端口发送到 192.168.0.30 的 80 端口，也就是从运行 hping3 机器的 18238 端口发送网络帧，目的为 Nginx 所在机器的 80 端口。</li>
+<li>Flags [S] 则表示这是一个 SYN 包。</li>
+</ul>
+<p>再加上前面用 sar 发现的， PPS 超过 12000 的现象，现在我们可以确认，这就是从 192.168.0.2 这个地址发送过来的 SYN FLOOD 攻击。</p>
+<p>到这里，我们已经做了全套的性能诊断和分析。从系统的软中断使用率高这个现象出发，通过观察 /proc/softirqs 文件的变化情况，判断出软中断类型是网络接收中断；再通过 sar 和 tcpdump ，确认这是一个 SYN FLOOD 问题。</p>
+<p>SYN FLOOD 问题最简单的解决方法，就是从交换机或者硬件防火墙中封掉来源 IP，这样 SYN FLOOD 网络帧就不会发送到服务器中。</p>
+<p>至于 SYN FLOOD 的原理和更多解决思路，你暂时不需要过多关注，后面的网络章节里我们都会学到。</p>
+<p>案例结束后，也不要忘了收尾，记得停止最开始启动的 Nginx 服务以及 hping3 命令。</p>
+<p>在第一个终端中，运行下面的命令就可以停止 Nginx 了：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 停止 Nginx 服务</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> docker rm -f nginx</span></span><br></pre></td></tr></table></figure>
+<p>然后到第二个终端中按下 Ctrl+C 就可以停止 hping3。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>软中断 CPU 使用率（softirq）升高是一种很常见的性能问题。虽然软中断的类型很多，但实际生产中，我们遇到的性能瓶颈大多是网络收发类型的软中断，特别是网络接收的软中断。</p>
+<p>在碰到这类问题时，你可以借用 sar、tcpdump 等工具，做进一步分析。不要害怕网络性能，后面我会教你更多的分析方法。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200">Jack Ou</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200">https://www.jianshu.com/u/10058d760200</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">此文章版权归Jack Ou所有，如有转载，请註明来自原作者</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">性能优化</a><a class="post-meta__tags" href="/tags/CPU%E6%80%A7%E8%83%BD/">CPU性能</a><a class="post-meta__tags" href="/tags/CPU%E4%BD%BF%E7%94%A8%E7%8E%87/">CPU使用率</a></div><div class="post_share"><div class="social-share" data-image="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" data-sites="wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏<div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-2431fc1f0eb1b702.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="微信"/></a><div class="post-qr-code-desc">微信</div></li><li class="reward-item"><a href="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" target="_blank"><img class="post-qr-code-img" src="https://upload-images.jianshu.io/upload_images/13838098-ea2cb9b10bc2f743.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="支付宝"/></a><div class="post-qr-code-desc">支付宝</div></li></ul></div></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/2022/03/20/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E7%90%86%E8%A7%A3Linux%E8%BD%AF%E4%B8%AD%E6%96%AD/"><img class="next-cover" src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">CPU性能篇-理解Linux软中断</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2022/03/19/CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例-下/" title="CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例_下"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-03-19</div><div class="title">CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例_下</div></div></a></div><div><a href="/2022/01/25/CPU性能篇-深入理解CPU使用率/" title="CPU性能篇-深入理解CPU使用率"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-01-25</div><div class="title">CPU性能篇-深入理解CPU使用率</div></div></a></div><div><a href="/2022/01/26/CPU性能篇-运行短时进程和进程反复崩溃致使CPU占用高/" title="CPU性能篇-运行短时进程和进程反复崩溃致使CPU占用高"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-01-26</div><div class="title">CPU性能篇-运行短时进程和进程反复崩溃致使CPU占用高</div></div></a></div><div><a href="/2022/01/27/CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例/" title="CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-01-27</div><div class="title">CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例</div></div></a></div><div><a href="/2022/01/23/CPU性能篇-理解平均负载/" title="CPU性能篇-理解平均负载"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-01-23</div><div class="title">CPU性能篇-理解平均负载</div></div></a></div><div><a href="/2022/01/23/CPU性能篇-上下文切换理解-上/" title="CPU性能篇-上下文切换理解—_上"><img class="cover" src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-01-23</div><div class="title">CPU性能篇-上下文切换理解—_上</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-info-avatar is-center"><img class="avatar-img" src="https://upload-images.jianshu.io/upload_images/13838098-a7dfe0e9d3ed649c.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">Jack Ou</div><div class="author-info__description">努力成为靠谱之人：凡事有交代，件件有着落，事事有回音</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">169</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">120</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://www.jianshu.com/u/10058d760200"><i class="fad fa-sheep"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/oujie123" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://www.jianshu.com/u/10058d760200" target="_blank" title="简书"><i class="fas fa-book-open"></i></a><a class="social-icon" href="https://blog.csdn.net/u010248147" target="_blank" title="CSDN"><i class="fab fa-microblog"></i></a><a class="social-icon" href="mailto:jackou4work@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎收看我的博客，很高兴与您一同成长！</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%87%86%E5%A4%87"><span class="toc-number">2.</span> <span class="toc-text">准备</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C"><span class="toc-number">3.</span> <span class="toc-text">操作</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">小结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2022/03/20/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E8%B0%83%E6%9F%A5%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%BD%AF%E4%B8%AD%E6%96%ADCPU%E4%BD%BF%E7%94%A8%E7%8E%87%E5%8D%87%E9%AB%98%E6%83%85%E5%86%B5/" title="CPU性能篇-调查系统的软中断CPU使用率升高情况"><img src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CPU性能篇-调查系统的软中断CPU使用率升高情况"/></a><div class="content"><a class="title" href="/2022/03/20/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E8%B0%83%E6%9F%A5%E7%B3%BB%E7%BB%9F%E7%9A%84%E8%BD%AF%E4%B8%AD%E6%96%ADCPU%E4%BD%BF%E7%94%A8%E7%8E%87%E5%8D%87%E9%AB%98%E6%83%85%E5%86%B5/" title="CPU性能篇-调查系统的软中断CPU使用率升高情况">CPU性能篇-调查系统的软中断CPU使用率升高情况</a><time datetime="2022-03-20T13:12:59.000Z" title="发表于 2022-03-20 21:12:59">2022-03-20</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/03/20/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E7%90%86%E8%A7%A3Linux%E8%BD%AF%E4%B8%AD%E6%96%AD/" title="CPU性能篇-理解Linux软中断"><img src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CPU性能篇-理解Linux软中断"/></a><div class="content"><a class="title" href="/2022/03/20/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E7%90%86%E8%A7%A3Linux%E8%BD%AF%E4%B8%AD%E6%96%AD/" title="CPU性能篇-理解Linux软中断">CPU性能篇-理解Linux软中断</a><time datetime="2022-03-20T08:53:13.000Z" title="发表于 2022-03-20 16:53:13">2022-03-20</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/03/19/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E7%B3%BB%E7%BB%9F%E4%B8%AD%E5%87%BA%E7%8E%B0%E5%A4%A7%E9%87%8F%E4%B8%8D%E5%8F%AF%E4%B8%AD%E6%96%AD%E8%BF%9B%E7%A8%8B%E5%92%8C%E5%83%B5%E5%B0%B8%E8%BF%9B%E7%A8%8B%E5%A4%84%E7%90%86%E6%A1%88%E4%BE%8B-%E4%B8%8B/" title="CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例_下"><img src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例_下"/></a><div class="content"><a class="title" href="/2022/03/19/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E7%B3%BB%E7%BB%9F%E4%B8%AD%E5%87%BA%E7%8E%B0%E5%A4%A7%E9%87%8F%E4%B8%8D%E5%8F%AF%E4%B8%AD%E6%96%AD%E8%BF%9B%E7%A8%8B%E5%92%8C%E5%83%B5%E5%B0%B8%E8%BF%9B%E7%A8%8B%E5%A4%84%E7%90%86%E6%A1%88%E4%BE%8B-%E4%B8%8B/" title="CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例_下">CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例_下</a><time datetime="2022-03-19T13:54:05.000Z" title="发表于 2022-03-19 21:54:05">2022-03-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/01/27/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E7%B3%BB%E7%BB%9F%E4%B8%AD%E5%87%BA%E7%8E%B0%E5%A4%A7%E9%87%8F%E4%B8%8D%E5%8F%AF%E4%B8%AD%E6%96%AD%E8%BF%9B%E7%A8%8B%E5%92%8C%E5%83%B5%E5%B0%B8%E8%BF%9B%E7%A8%8B%E5%A4%84%E7%90%86%E6%A1%88%E4%BE%8B/" title="CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例"><img src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例"/></a><div class="content"><a class="title" href="/2022/01/27/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E7%B3%BB%E7%BB%9F%E4%B8%AD%E5%87%BA%E7%8E%B0%E5%A4%A7%E9%87%8F%E4%B8%8D%E5%8F%AF%E4%B8%AD%E6%96%AD%E8%BF%9B%E7%A8%8B%E5%92%8C%E5%83%B5%E5%B0%B8%E8%BF%9B%E7%A8%8B%E5%A4%84%E7%90%86%E6%A1%88%E4%BE%8B/" title="CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例">CPU性能篇-系统中出现大量不可中断进程和僵尸进程处理案例</a><time datetime="2022-01-27T07:29:07.000Z" title="发表于 2022-01-27 15:29:07">2022-01-27</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/01/26/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E8%BF%90%E8%A1%8C%E7%9F%AD%E6%97%B6%E8%BF%9B%E7%A8%8B%E5%92%8C%E8%BF%9B%E7%A8%8B%E5%8F%8D%E5%A4%8D%E5%B4%A9%E6%BA%83%E8%87%B4%E4%BD%BFCPU%E5%8D%A0%E7%94%A8%E9%AB%98/" title="CPU性能篇-运行短时进程和进程反复崩溃致使CPU占用高"><img src="https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CPU性能篇-运行短时进程和进程反复崩溃致使CPU占用高"/></a><div class="content"><a class="title" href="/2022/01/26/CPU%E6%80%A7%E8%83%BD%E7%AF%87-%E8%BF%90%E8%A1%8C%E7%9F%AD%E6%97%B6%E8%BF%9B%E7%A8%8B%E5%92%8C%E8%BF%9B%E7%A8%8B%E5%8F%8D%E5%A4%8D%E5%B4%A9%E6%BA%83%E8%87%B4%E4%BD%BFCPU%E5%8D%A0%E7%94%A8%E9%AB%98/" title="CPU性能篇-运行短时进程和进程反复崩溃致使CPU占用高">CPU性能篇-运行短时进程和进程反复崩溃致使CPU占用高</a><time datetime="2022-01-26T07:19:57.000Z" title="发表于 2022-01-26 15:19:57">2022-01-26</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://upload-images.jianshu.io/upload_images/13838098-f15188c53cac98cc.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2022 By Jack Ou</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi, welcome to my <a href="https://oujie123.github.io/">blog</a>!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><div class="search-dialog__title" id="local-search-title">本地搜索</div><div id="local-input-panel"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div></div><hr/><div id="local-search-results"></div><span class="search-close-button"><i class="fas fa-times"></i></span></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script>function panguFn () {
+  if (typeof pangu === 'object') pangu.spacingElementById('content-inner')
+  else {
+    getScript('https://cdn.jsdelivr.net/npm/pangu/dist/browser/pangu.min.js')
+      .then(() => {
+        pangu.spacingElementById('content-inner')
+      })
+  }
+}
+
+function panguInit () {
+  if (false){
+    GLOBAL_CONFIG_SITE.isPost && panguFn()
+  } else {
+    panguFn()
+  }
+}
+
+document.addEventListener('DOMContentLoaded', panguInit)</script><script src="/js/search/local-search.js"></script><script>var preloader = {
+  endLoading: () => {
+    document.body.style.overflow = 'auto';
+    document.getElementById('loading-box').classList.add("loaded")
+  },
+  initLoading: () => {
+    document.body.style.overflow = '';
+    document.getElementById('loading-box').classList.remove("loaded")
+
+  }
+}
+window.addEventListener('load',()=> {preloader.endLoading()})</script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="true" data-click="true"></script><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-fluttering-ribbon.min.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="99" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-nest.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/activate-power-mode.min.js"></script><script>POWERMODE.colorful = true;
+POWERMODE.shake = true;
+POWERMODE.mobile = true;
+document.body.addEventListener('input', POWERMODE);
+</script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-heart.min.js" async="async" mobile="true"></script><script id="click-show-text" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/click-show-text.min.js" data-mobile="true" data-text="I,LOVE,YOU" data-fontsize="15px" data-random="false" async="async"></script></div></body></html>
